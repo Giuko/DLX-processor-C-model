@@ -1,4 +1,4 @@
-#include "cpu_model.h"
+#include "cpu_model/cpu_model.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +23,7 @@ void print_state(void *handle){
 	printf("\n\n\n\n");
 }
 
-void press_and_continue(void *handle){
+bool press_and_continue(void *handle){
 	struct termios oldt, newt;
     int ch;
 	// Get current terminal settings
@@ -36,14 +36,17 @@ void press_and_continue(void *handle){
     // Apply new settings
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-    printf("Press s to check state or any key to continue...\n");
+    printf("Press s to check state, q to exit, or any key to continue...\n");
 
     ch = getchar();  // Read one character immediately
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 	if(ch == 's' || ch == 'S')
 		print_state(handle);
+	if(ch == 'q')
+		return false;
 
     // Restore original settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+	return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -58,7 +61,7 @@ int main(int argc, char *argv[]) {
 
 
 	if(argc < 3){
-		fprintf(stderr, "Wrong usage: %s <filename> <num_of_row_to_execute>", argv[1]);
+		fprintf(stderr, "Wrong usage: %s <filename> <num_of_row_to_execute>", argv[0]);
 		exit(-1);
 	}
 	filename = argv[1];
@@ -109,16 +112,13 @@ int main(int argc, char *argv[]) {
 	printf("############################################\n");
 	press_and_continue(cpu);
 
-
-	for(i = 0; i < 4+num_of_row_to_execute; i++){
+	int flag = true;
+	for(i = 0; flag ; i++){
 		printf("\n\n\n######## STEP %3d ########\n", i);
 		cpu_step(cpu);
-		press_and_continue(cpu);
+		flag = press_and_continue(cpu);
 	}
 
-	printf("############################################\n");
-	printf("################### STATE ##################\n");
-	print_state(cpu);
 	free(program);
 	memory_destroy(cpu);
 

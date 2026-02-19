@@ -3,7 +3,7 @@ subi r2, r0, #5
 ori r3, r0, #12
 xori r4, r0, #8
 andi r5, r1, #4
-sw 1(r0), r1
+sw r1, r0, #1
 slli r6, r2, #1
 srli r7, r3, #1
 snei r8, r4, #1
@@ -19,4 +19,4 @@ srl r7, r7, r8
 sne r8, r8, r9
 sle r9, r9, r10
 sge r10, r10, r11
-lw r21, 1(r0)
+lw r21, r0, #1

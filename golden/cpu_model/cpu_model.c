@@ -111,9 +111,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	// Decode instruction
 	if (opcode == OPCODE_NOP) {
 		// Do nothing
-#ifdef DEBUG
-		printf("[DECODE]: NOP\n");
-#endif
+		printf("[DECODE] NOP\n");
 		return pipeDecode;
 	} else if (opcode == 0x00) {	
 		// R-Type
@@ -149,41 +147,53 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ) {	
 		// J-Type
 		// | opcode (6) | immediate (26) |
-		imm = instr & 0x03FFFFFF;
-		
-		// Sign extension 
-		if(imm >> 25)
-			imm |= 0xFC000000;
-
+		// Branch
+		// | opcode (6) | rs1 (5) | xxxx (5) | immediate (16) | [Itype]
+		if(opcode == OPCODE_J || opcode == OPCODE_JAL)	{
+			imm = instr & 0x03FFFFFF;
+			// Sign extension 
+			if(imm >> 25)
+				imm |= 0xFC000000;
+		} else {
+			imm = instr & 0xFFFF;
+			
+			// Sign extension
+			if(imm >> 15)
+				imm |= 0xFFFF0000;
+		}
 #ifdef DEBUG
 		printf("[DECODE]: JTYPE | imm: %#010x\n", imm);
 #endif
 
 		useImm = true;
+		ALU_opcode = FUNC_ADDU;
 		
 		// Get controls signal to use to the next steps
 		switch (opcode) {
 			case OPCODE_J:
-				ALU_opcode = FUNC_ADD;
 				jmp_eqz_neqz = jump;
 				break;
 			case OPCODE_JAL:
-				ALU_opcode = FUNC_ADD;
 				jmp_eqz_neqz = jump_link;
 				rd = 31;				// Store the NPC to the register 31
 				writeRF = true;
 				break;
 			case OPCODE_BEQZ:
-				ALU_opcode = FUNC_ADD;
+				rs1 = (instr >> (32-11)) & 0x1F;
+				rs1_val = cpu->regs[rs1];
 				jmp_eqz_neqz = eqz;
 				break;
 			case OPCODE_BNEZ:
-				ALU_opcode = FUNC_ADD;
+				rs1 = (instr >> (32-11)) & 0x1F;
+				rs1_val = cpu->regs[rs1];
 				jmp_eqz_neqz = neqz;
 				break;
 			default:
 				// If not a branch/jump instr
-				jmp_eqz_neqz = nop;
+				// Should never goes here
+				fprintf(stderr, "[Decode] I-Type - shouldn't be here\n");
+				memory_destroy(pipeFetch);	// Free used mem
+				return NULL;
 				break;
 		}
 	} else { 
@@ -358,12 +368,12 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	if(pipeDecode->useImm){
 		operandB = pipeDecode->imm;
 #ifdef DEBUG
-		printf("[EXE] Using immediate as operand A\n");
+		printf("[EXE] Using immediate as operand B\n");
 #endif
 	}else{
 		operandB = pipeDecode->rs2_val;
 #ifdef DEBUG
-		printf("[EXE] Using RS2 as operand A\n");
+		printf("[EXE] Using RS2 as operand B\n");
 #endif
 	}
 	switch (ALU_opcode) {
@@ -543,7 +553,10 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->readMem = pipeDecode->readMem;
 	
 	strcpy(pipeEx->instr_str, pipeDecode->instr_str);
-	printf("[EXE] %s\n", pipeEx->instr_str);
+	if(strlen(pipeEx->instr_str) == 0)
+		printf("[EXE] NOP\n");
+	else
+		printf("[EXE] %s\n", pipeEx->instr_str);
 
 	// Previous pipe is now useless
 	memory_destroy(pipeDecode);
@@ -598,7 +611,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	// TODO: check when the PC gets updated after the branch resolution
 	if(pipeEx->jump){
 		//  If jump == true then ALU_out will hold the new PC
-		cpu->pc = pipeEx->ALU_out;
+		cpu->pc = pipeEx->ALU_out/4;
 #ifdef DEBUG
 		printf("[MEM] JUMPING\n");
 #endif
@@ -622,7 +635,10 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	pipeMem->jump		= pipeEx->jump;
 
 	strcpy(pipeMem->instr_str, pipeEx->instr_str);
-	printf("[MEM] %s\n", pipeMem->instr_str);
+	if(strlen(pipeMem->instr_str) == 0)
+		printf("[MEM] NOP\n");
+	else
+		printf("[MEM] %s\n", pipeMem->instr_str);
 	
 	// Previous pipe is now useless
 	memory_destroy(pipeEx);
@@ -670,7 +686,10 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 #endif
 	}
 
-	printf("[WB] %s\n", pipeMem->instr_str);
+	if(strlen(pipeMem->instr_str) == 0)
+		printf("[WB] NOP\n");
+	else
+		printf("[WB] %s\n", pipeMem->instr_str);
 	// Previous pipe is now useless
 	memory_destroy(pipeMem);
 }
