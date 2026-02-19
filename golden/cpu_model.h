@@ -30,6 +30,7 @@
 #define FUNC_SLEU 	0x3c
 #define FUNC_SGEU 	0x3d
 
+#define OPCODE_RTYPE    0x00
 #define OPCODE_J        0x02
 #define OPCODE_JAL      0x03
 #define OPCODE_BEQZ     0x04
@@ -78,6 +79,9 @@ typedef struct {
 typedef struct {
 	uint32_t instr;
 	uint32_t nextPC;
+
+	// Extra
+	char instr_str[64];
 } pipeFetch_t;
 
 // Set correct variable to use
@@ -98,6 +102,9 @@ typedef struct {
 
 	// Propagate old signals
 	uint32_t nextPC;
+	
+	// Extra
+	char instr_str[64];
 } pipeDecode_t;
 
 typedef struct{
@@ -117,6 +124,9 @@ typedef struct{
 	uint32_t nextPC;
 	uint32_t rs2_val;		// To be used as DRAM_data
 	uint8_t  rd;
+	
+	// Extra
+	char instr_str[64];
 } pipeEx_t;
 
 typedef struct{
@@ -132,6 +142,9 @@ typedef struct{
 	uint32_t ALU_out; 
 	uint32_t nextPC;
 	uint8_t  rd;
+	
+	// Extra
+	char instr_str[64];
 
 } pipeMem_t;
 
@@ -172,5 +185,8 @@ uint32_t cpu_get_pc(void* handle);
 
 // Destroy instance
 void memory_destroy(void* handle);
+
+// Return the string of the instruction
+char *identify_instruction(uint32_t instr);
 
 #endif //CPU_MODEL_H
