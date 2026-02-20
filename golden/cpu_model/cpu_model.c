@@ -56,6 +56,7 @@ pipeFetch_t *instruction_fetch(void *handle) {
 	printf("[FETCH] Instr: %#010x\n", pipeFetch->instr);
 #endif
 	strcpy(pipeFetch->instr_str, identify_instruction(pipeFetch->instr));
+	pipeFetch->nextPC = (cpu->pc+1)*4;
 	printf("[FETCH] %s\n", pipeFetch->instr_str);
 	return pipeFetch;	
 }
@@ -354,26 +355,28 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	memset(pipeEx, 0, sizeof(pipeEx_t));
 
 
-	if(pipeDecode->jmp_eqz_neqz != nop){	// TODO: check mux_a_sel what it is
-		operandA = pipeDecode->nextPC;
+	if(pipeDecode->jmp_eqz_neqz != nop){		// TODO: check mux_a_sel what it is
+		//operandA = pipeDecode->nextPC;		// We're using pc as multiply of 4 inside the datapath
+		operandA = 0;
 #ifdef DEBUG
-		printf("[EXE] Using next PC as operand A\n");
+		//printf("[EXE] Using next PC as operand A: 0x%08x\n", operandA);
+		printf("[EXE] Jumping, 0x0 as operand A\n");
 #endif
 	}else {
 		operandA = pipeDecode->rs1_val;
 #ifdef DEBUG
-		printf("[EXE] Using RS1 as operand A\n");
+		printf("[EXE] Using RS1 as operand A: 0x%08x\n", operandA);
 #endif
 	}
 	if(pipeDecode->useImm){
 		operandB = pipeDecode->imm;
 #ifdef DEBUG
-		printf("[EXE] Using immediate as operand B\n");
+		printf("[EXE] Using immediate as operand B: 0x%08x\n", operandB);
 #endif
 	}else{
 		operandB = pipeDecode->rs2_val;
 #ifdef DEBUG
-		printf("[EXE] Using RS2 as operand B\n");
+		printf("[EXE] Using RS2 as operand B: 0x%08x\n", operandB);
 #endif
 	}
 	switch (ALU_opcode) {
@@ -613,7 +616,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 		//  If jump == true then ALU_out will hold the new PC
 		cpu->pc = pipeEx->ALU_out/4;
 #ifdef DEBUG
-		printf("[MEM] JUMPING\n");
+		printf("[MEM] JUMPING at 0x%08x\n", cpu->pc);
 #endif
 	}else {
 		cpu->pc++;
@@ -665,7 +668,7 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 			// JAL instruction -- rd set to 31
 			val_to_store = pipeMem->nextPC;
 #ifdef DEBUG
-			printf("[WB] Storing next PC\n");
+			printf("[WB] Storing next PC: 0x%08x\n", val_to_store);
 #endif
 		}else if(pipeMem->readMem) {
 			// LOAD instruction
