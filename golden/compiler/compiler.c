@@ -118,7 +118,7 @@ int parse_opcode(const char *line, uint8_t *opcode, uint8_t *func) {
     }
 	
     // Unknown opcode
-	printf("Unknown OPCODE\n");
+	printf("Unknown OPCODE: %s\n", line);
 	return -1;
 }
 
@@ -174,6 +174,7 @@ int main(int argc, char *argv[]){
 	}
 
 	memset(line, 0, MAX_LINE_LEN);
+
 	while (fgets(line, sizeof(line), fd)) {
 		line_number++;
 	
@@ -183,9 +184,6 @@ int main(int argc, char *argv[]){
 		// Skip empty lines and comments
 		if (line[0] == '\0' || line[0] == '#' || line[0] == ';')
 			continue;
-
-
-		printf("Line %d: %s\n", line_number, line);
 		p = line;
 		while (*p && isspace(*p)) p++;
 		char *colon = strchr(p, ':');
@@ -201,6 +199,42 @@ int main(int argc, char *argv[]){
 			num_labels++;
 
 			printf("Label %s at 0x%x\n", labels[num_labels-1].name, labels[num_labels-1].address);
+			continue;
+		}
+	}
+	rewind(fd);
+	memset(line, 0, MAX_LINE_LEN);
+	line_number=0;
+	while (fgets(line, sizeof(line), fd)) {
+		line_number++;
+	
+		// Remove newline character
+		line[strcspn(line, "\r\n")] = 0;
+
+		// Skip empty lines and comments
+		if (line[0] == '\0' || line[0] == '#' || line[0] == ';')
+			continue;
+
+
+		printf("Line %d: %s\n", line_number, line);
+		p = line;
+		while (*p && isspace(*p)) p++;
+		
+		char *colon = strchr(p, ':');
+		// Check if the line contains a colon : before any space or comment
+		if (colon != NULL && (colon == p || *(colon-1) != ' ')) {
+			// Found a label
+			/*
+			int len = colon - p;
+			char label_name[32];
+			strncpy(label_name, p, len);
+			label_name[len] = '\0';
+			labels[num_labels].address = (line_number-1)*4;
+			strcpy(labels[num_labels].name, label_name);
+			num_labels++;
+
+			printf("Label %s at 0x%x\n", labels[num_labels-1].name, labels[num_labels-1].address);
+			*/
 			continue;
 		}
 
@@ -225,11 +259,12 @@ int main(int argc, char *argv[]){
 			int rs1 = parse_register(tokens[2]);
 			int rs2 = parse_register(tokens[3]);
 			current_line_hex = (opcode << 26) | (rs1 << 21) | (rs2 << 16) | (rd << 11) | func;
-		}else if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ) {
+		}else if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ || opcode == OPCODE_JR || opcode == OPCODE_JALR) {
 			// JTYPE
-			// TODO add relative
-			// at the moment only absolute
-			if (opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ){
+			if (opcode == OPCODE_JR || opcode == OPCODE_JALR){
+				int rs1 = parse_register(tokens[1]);
+				current_line_hex = (opcode << 26) | (rs1 << 21);
+			} else if (opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ){
 				int rs1 = parse_register(tokens[1]);
 				int address = find_label_address(tokens[2]);
 #ifdef RELATIVE_JUMP

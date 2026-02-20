@@ -97,6 +97,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	bool			writeMem	 = false;
 	bool 			readMem		 = false;
 	bool			useImm		 = false;
+	bool			useRegisterToJump = false;
 
 
 
@@ -148,16 +149,21 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		// To make it simple, the ALU_opcode is the same as func
 		ALU_opcode = func;
 
-	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ) {	
+	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ || opcode == OPCODE_JR || opcode == OPCODE_JALR) {	
 		// J-Type
 		// | opcode (6) | immediate (26) |
 		// Branch
 		// | opcode (6) | rs1 (5) | xxxx (5) | immediate (16) | [Itype]
-		if(opcode == OPCODE_J || opcode == OPCODE_JAL)	{
+		if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR)	{
 			imm = instr & 0x03FFFFFF;
 			// Sign extension 
 			if(imm >> 25)
 				imm |= 0xFC000000;
+			if(opcode == OPCODE_JR || opcode == OPCODE_JALR) {
+				useRegisterToJump = true;
+				rs1 = (instr >> (32-11)) & 0x1F;
+				rs1_val = cpu->regs[rs1];
+			}
 		} else {
 			imm = instr & 0xFFFF;
 			
@@ -174,9 +180,11 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		
 		// Get controls signal to use to the next steps
 		switch (opcode) {
+			case OPCODE_JR:
 			case OPCODE_J:
 				jmp_eqz_neqz = jump;
 				break;
+			case OPCODE_JALR:
 			case OPCODE_JAL:
 				jmp_eqz_neqz = jump_link;
 				rd = 31;				// Store the NPC to the register 31
@@ -316,6 +324,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	pipeDecode->useImm			= useImm;
 	pipeDecode->writeMem		= writeMem;
 	pipeDecode->readMem			= readMem;
+	pipeDecode->useRegisterToJump = useRegisterToJump;
 	
 	strcpy(pipeDecode->instr_str, pipeFetch->instr_str);
 	printf("[DECODE] %s\n", pipeDecode->instr_str);
@@ -555,7 +564,9 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->ALU_out = ALU_out;
 	pipeEx->jump = toJump;
 #ifdef DELAYSLOT1
-	if(pipeEx->jump)
+	if(pipeEx->useRegisterToJump)
+		cpu->pc = pipeEx->rs1_val/4;
+	else if(pipeEx->jump)
 		cpu->pc = pipeEx->ALU_out/4;
 	else
 		cpu->pc++; 
@@ -565,11 +576,13 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->nextPC = pipeDecode->nextPC;
 	pipeEx->rs2_val = pipeDecode->rs2_val;
 	pipeEx->rd = pipeDecode->rd;
+	pipeEx->rs1_val = pipeDecode->rs1_val;
 
 	// Contols
 	pipeEx->writeRF = pipeDecode->writeRF;
 	pipeEx->writeMem = pipeDecode->writeMem;
 	pipeEx->readMem = pipeDecode->readMem;
+	pipeEx->useRegisterToJump = pipeDecode->useRegisterToJump;
 	
 	strcpy(pipeEx->instr_str, pipeDecode->instr_str);
 	if(strlen(pipeEx->instr_str) == 0)
@@ -643,11 +656,13 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	pipeMem->ALU_out	= pipeEx->ALU_out;
 	pipeMem->nextPC		= pipeEx->nextPC;
 	pipeMem->rd			= pipeEx->rd;
+	pipeMem->rs1_val	= pipeEx->rs1_val;
 
 	// Controls
 	pipeMem->writeRF	= pipeEx->writeRF;
 	pipeMem->readMem	= pipeEx->readMem;
 	pipeMem->jump		= pipeEx->jump;
+	pipeMem->useRegisterToJump = pipeEx->useRegisterToJump;
 
 	strcpy(pipeMem->instr_str, pipeEx->instr_str);
 	if(strlen(pipeMem->instr_str) == 0)
@@ -659,7 +674,9 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	memory_destroy(pipeEx);
 
 #ifdef DELAYSLOT2
-	if(pipeMem->jump)
+	if(pipeEx->useRegisterToJump)
+		cpu->pc = pipeEx->rs1_val/4;
+	else if(pipeMem->jump)
 		cpu->pc = pipeMem->ALU_out/4;
 	else
 		cpu->pc++; 
@@ -681,7 +698,9 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 	cpu_t *cpu = (cpu_t*)handle;
 	uint32_t val_to_store;
 #ifdef DELAYSLOT3
-	if(pipeMem->jump)
+	if(pipeMem->useRegisterToJump)
+		cpu->pc = pipeMem->rs1_val/4;
+	else if(pipeMem->jump)
 		cpu->pc = pipeMem->ALU_out/4;
 	else
 		cpu->pc++; 

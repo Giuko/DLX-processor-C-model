@@ -99,6 +99,7 @@ typedef struct {
 	bool 		useImm;
 	bool 		writeMem;
 	bool 		readMem;
+	bool		useRegisterToJump;
 
 	// Propagate old signals
 	uint32_t nextPC;
@@ -122,8 +123,10 @@ typedef struct{
 
 	// Propagate old signals
 	uint32_t nextPC;
+	uint32_t rs1_val;		// To be used as jump register
 	uint32_t rs2_val;		// To be used as DRAM_data
 	uint8_t  rd;
+	bool		useRegisterToJump;
 	
 	// Extra
 	char instr_str[64];
@@ -139,9 +142,11 @@ typedef struct{
 	bool	jump;			// If true PC = computedPC
 	
 	// Propagate old signals
+	uint32_t rs1_val;		// To be used as jump register
 	uint32_t ALU_out; 
 	uint32_t nextPC;
 	uint8_t  rd;
+	bool		useRegisterToJump;
 	
 	// Extra
 	char instr_str[64];
