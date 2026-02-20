@@ -16,10 +16,13 @@
 #define COLOR_BOLD           "\033[1m"
 
 // Define screens size
-#define RIGHT_COL    55
 #define TOP_ROW       1
 #define MAX_STEP_LINES 32
 #define MAX_LINE_LEN  128
+#define RIGHT_COL       45    // program panel
+#define REG_COL         120   // registers panel
+#define PANEL_HEIGHT    35
+#define TOP_ROW          1
 
 // Some useful constants to manage button pressed
 #define OK 0
@@ -77,55 +80,73 @@ void capture_cpu_step(void *handle) {
     }
 }
 
+#define PANEL_HEIGHT 35  // max visible lines in the program panel
+
 void draw_program_panel(void *handle) {
 	cpu_t    *cpu = (cpu_t *)handle;
 	uint32_t  currentPC = cpu_get_pc(cpu);
 	int i;
 
+	// Calculate scroll offset so currentPC is always visible
+	int scroll = 0;
+	if ((int)currentPC >= PANEL_HEIGHT / 2)
+		scroll = (int)currentPC - PANEL_HEIGHT / 2;
+	if (scroll + PANEL_HEIGHT > g_program_size)
+		scroll = g_program_size - PANEL_HEIGHT;
+	if (scroll < 0)
+		scroll = 0;
+
 	// Vertical separator
-	for (i = 0; i < 40; i++) {
+	for (i = 0; i < PANEL_HEIGHT + 2; i++) {
 		MOVE_CURSOR(TOP_ROW + i, RIGHT_COL - 2);
 		printf(COLOR_DIM "|" COLOR_RESET);
 	}
 
 	// Header
-    MOVE_CURSOR(TOP_ROW, RIGHT_COL);
-    printf(COLOR_BOLD "  ADDR      OPCODE      DISASM" COLOR_RESET);
-    MOVE_CURSOR(TOP_ROW + 1, RIGHT_COL);
-    printf(COLOR_DIM "  --------------------------------" COLOR_RESET);
+	MOVE_CURSOR(TOP_ROW, RIGHT_COL);
+	printf(COLOR_BOLD "  ADDR      OPCODE      DISASM" COLOR_RESET);
+	MOVE_CURSOR(TOP_ROW + 1, RIGHT_COL);
+	printf(COLOR_DIM "  --------------------------------" COLOR_RESET);
 
-	for (i = 0; i < g_program_size; i++) {
+    // Draw only the visible window of instructions
+	for (i = 0; i < PANEL_HEIGHT && (scroll + i) < g_program_size; i++) {
+		int idx = scroll + i;
 		MOVE_CURSOR(TOP_ROW + 2 + i, RIGHT_COL);
-		uint32_t byte_addr = (uint32_t)i * 4;
-		if ((uint32_t)i == currentPC)
-			printf(COLOR_HIGHLIGHT "--> 0x%04x  %#010x  %-20s" COLOR_RESET, byte_addr, g_program[i], identify_instruction(g_program[i]));
+		uint32_t byte_addr = (uint32_t)idx * 4;
+		if ((uint32_t)idx == currentPC)
+			printf(COLOR_HIGHLIGHT "--> 0x%04x  %#010x  %-20s" COLOR_RESET, byte_addr, g_program[idx], identify_instruction(g_program[idx]));
 		else
-			printf("    0x%04x  %#010x  %-20s", byte_addr, g_program[i], identify_instruction(g_program[i]));
+			printf("    0x%04x  %#010x  %-20s", byte_addr, g_program[idx], identify_instruction(g_program[idx]));
+	}
+
+	// Clear any leftover rows below the visible window
+	for (; i < PANEL_HEIGHT; i++) {
+		MOVE_CURSOR(TOP_ROW + 2 + i, RIGHT_COL);
+		printf("%-50s", "");
 	}
 }
 
 void draw_left_panel(int step) {
-	int i;
+    int i;
 
-	MOVE_CURSOR(1, 1);
-	printf(COLOR_BOLD "=== STEP %d ===" COLOR_RESET "                        ", step);
+    MOVE_CURSOR(1, 1);
+    printf(COLOR_BOLD "=== STEP %d ===" COLOR_RESET "                        ", step);
 
-	MOVE_CURSOR(3, 1);
-	printf(COLOR_BOLD "Pipeline activity:" COLOR_RESET "                      ");
+    MOVE_CURSOR(3, 1);
+    printf(COLOR_BOLD "Pipeline activity:" COLOR_RESET "                      ");
 
-	for (i = 0; i < g_step_line_count; i++) {
-		MOVE_CURSOR(4 + i, 1);
-		printf("%-50s", g_step_output[i]);   // pad to avoid leftover chars
-	}
+    for (i = 0; i < g_step_line_count; i++) {
+        MOVE_CURSOR(4 + i, 1);
+        printf("%-40s", g_step_output[i]);
+    }
 
-	// Clear any leftover lines from a previous step that had more output
-	for (i = g_step_line_count; i < MAX_STEP_LINES; i++) {
-		MOVE_CURSOR(4 + i, 1);
-		printf("%-50s", "");
-	}
+    for (i = g_step_line_count; i < MAX_STEP_LINES; i++) {
+        MOVE_CURSOR(4 + i, 1);
+        printf("%-40s", "");
+    }
 
-	MOVE_CURSOR(38, 1);
-	printf("Press [s] state [r] restart [q] quit  [any] next step   ");
+    MOVE_CURSOR(38, 1);
+    printf("Press [r] restart  [q] quit  [any] next step   ");
 }
 
 void print_state(void *handle) {
@@ -140,7 +161,7 @@ void print_state(void *handle) {
     MOVE_CURSOR(1, 1);
     printf(COLOR_BOLD "=== CPU STATE ===" COLOR_RESET "                    ");
     MOVE_CURSOR(2, 1);
-    printf("PC: 0x%08x (byte: 0x%08x)  ", currentPC, currentPC * 4);
+    printf("PC: 0x%08x", currentPC*4);
     MOVE_CURSOR(3, 1);
     printf("                                   ");
     for (i = 0; i < 32; i++) {
@@ -150,12 +171,41 @@ void print_state(void *handle) {
 }
 
 
+
+void draw_registers(void *handle) {
+    cpu_t    *cpu = (cpu_t *)handle;
+    uint32_t  currentPC = cpu_get_pc(cpu);
+    uint32_t  regs[32];
+    int i;
+
+    for (i = 0; i < 32; i++)
+        regs[i] = cpu_get_reg(cpu, i);
+
+    // Separator
+    for (i = 0; i < PANEL_HEIGHT + 2; i++) {
+        MOVE_CURSOR(TOP_ROW + i, REG_COL - 2);
+        printf(COLOR_DIM "|" COLOR_RESET);
+    }
+
+    // Header
+    MOVE_CURSOR(TOP_ROW, REG_COL);
+    printf(COLOR_BOLD "PC: 0x%04x" COLOR_RESET, currentPC * 4);
+    MOVE_CURSOR(TOP_ROW + 1, REG_COL);
+    printf(COLOR_DIM "  ----------------" COLOR_RESET);
+
+    for (i = 0; i < 32; i++) {
+        MOVE_CURSOR(TOP_ROW + 2 + i, REG_COL);
+        printf("R%-2d: 0x%08x    ", i, regs[i]);
+    }
+}
+
 int press_and_continue(void *handle, int step) {
     struct termios oldt, newt;
     int ch;
 
     CLEAR_SCREEN();
     draw_program_panel(handle);
+    draw_registers(handle);      // always visible on the right
     draw_left_panel(step);
     fflush(stdout);
 
@@ -166,30 +216,13 @@ int press_and_continue(void *handle, int step) {
     ch = getchar();
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 
-    if (ch == 's' || ch == 'S') {
-        CLEAR_SCREEN();          // wipe everything
-        draw_program_panel(handle);  // redraw right side
-        print_state(handle);         // draw state on left
-        MOVE_CURSOR(38, 1);
-        printf("Press any key to continue...");
-        fflush(stdout);
-        tcgetattr(STDIN_FILENO, &oldt);
-        newt = oldt;
-        newt.c_lflag &= ~(ICANON | ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-        getchar();
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    if (ch == 'r')
+        return RESTART;
+    if (ch == 'q') {
+        CLEAR_SCREEN();
+        return QUIT;
     }
-    if (ch == 'q')
-    	CLEAR_SCREEN();
-
-	if (ch == 'r')
-		return RESTART;
-
-	if(ch == 'q')
-		return QUIT;
-	
-	return OK;
+    return OK;
 }
 
 int main(int argc, char *argv[]) {

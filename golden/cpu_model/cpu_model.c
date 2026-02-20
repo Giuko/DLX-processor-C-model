@@ -556,7 +556,7 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->jump = toJump;
 #ifdef DELAYSLOT1
 	if(pipeEx->jump)
-		cpu->pc = pipeEx->ALU_out;
+		cpu->pc = pipeEx->ALU_out/4;
 	else
 		cpu->pc++; 
 #endif
@@ -629,7 +629,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 		//  If jump == true then ALU_out will hold the new PC
 		pipeMem->nextPC = pipeEx->ALU_out/4;
 #ifdef DEBUG
-		printf("[MEM] JUMPING at 0x%08x\n", cpu->pc);
+		printf("[MEM] JUMPING at 0x%08x\n", pipeMem->nextPC*4);
 #endif
 	}else {
 #ifdef DEBUG
@@ -660,7 +660,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 
 #ifdef DELAYSLOT2
 	if(pipeMem->jump)
-		cpu->pc = pipeMem->ALU_out;
+		cpu->pc = pipeMem->ALU_out/4;
 	else
 		cpu->pc++; 
 #endif
@@ -682,7 +682,7 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 	uint32_t val_to_store;
 #ifdef DELAYSLOT3
 	if(pipeMem->jump)
-		cpu->pc = pipeMem->ALU_out;
+		cpu->pc = pipeMem->ALU_out/4;
 	else
 		cpu->pc++; 
 #endif
