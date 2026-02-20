@@ -23,11 +23,14 @@ ifeq ($(to_debug),yes)
     CFLAGS += -DDEBUG
 endif
 
-all: a.out $(COMPILER)/compiler.out
+all: a.out basicallyGDB.out $(COMPILER)/compiler.out
 	rm -f *.o
 
 run: all
 	./a.out $(TESTPROGRAM)/$(FILENAME) $(ROWS)
+
+gdb: all
+	./basicallyGDB.out $(TESTPROGRAM)/$(FILENAME) $(ROWS)
 
 datapath: all
 	./a.out $(TESTPROGRAM)/Datapath_Test.asm.mem $(ROWS)
@@ -40,6 +43,12 @@ compile: all
 
 clean:
 	rm -f *.o a.out
+
+basicallyGDB.out: basicallyGDB.o cpu_model.o
+	$(CC) basicallyGDB.o cpu_model.o -o basicallyGDB.out
+
+basicallyGDB.o: basicallyGDB.c $(CPUMODEL)/cpu_model.h
+	$(CC) $(CFLAGS) -c basicallyGDB.c 
 
 a.out: main.o cpu_model.o
 	$(CC) main.o cpu_model.o -o a.out
