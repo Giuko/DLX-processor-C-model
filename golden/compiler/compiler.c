@@ -227,15 +227,27 @@ int main(int argc, char *argv[]){
 			current_line_hex = (opcode << 26) | (rs1 << 21) | (rs2 << 16) | (rd << 11) | func;
 		}else if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ) {
 			// JTYPE
-			// TODO improve it
+			// TODO add relative
+			// at the moment only absolute
 			if (opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ){
 				int rs1 = parse_register(tokens[1]);
 				int address = find_label_address(tokens[2]);
+#ifdef RELATIVE_JUMP
+				int current = (line_number - 1) * 4;
+				int offset = address - (current);
+				current_line_hex = (opcode << 26) | (rs1 << 21) | (offset & 0xFFFF);
+#else
 				current_line_hex = (opcode << 26) | (rs1 << 21) | (address & 0xFFFF);
-				printf("brench\n");
+#endif
 			} else {
 				int address = find_label_address(tokens[1]);
+#ifdef RELATIVE_JUMP
+				int current = (line_number - 1) * 4;
+				int offset = address - (current);
+				current_line_hex = (opcode << 26) | (offset & 0x03FFFFFF);
+#else
 				current_line_hex = (opcode << 26) | (address & 0x03FFFFFF);
+#endif
 			}
 		}else {
 			// ITYPE

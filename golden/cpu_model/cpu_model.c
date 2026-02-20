@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+uint8_t g_iteration = 0; 	
+
 // Create CPU instance
 void* cpu_create() {
     cpu_t* cpu = (cpu_t*)malloc(sizeof(cpu_t));
@@ -19,7 +21,8 @@ void* cpu_create() {
 // Reset CPU
 void cpu_reset(void* handle) {
     cpu_t* cpu = (cpu_t*)handle;
-    cpu->pc = -1;
+    g_iteration = 0;
+	cpu->pc = -1;
     memset(cpu->regs, 0, sizeof(cpu->regs));
 }
 
@@ -325,7 +328,8 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 
 // Ex stage
 pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
-	if(handle == NULL){
+	cpu_t *cpu = (cpu_t*)handle;
+	if(cpu == NULL){
 		fprintf(stderr, "Failed to access CPU\n");
 		memory_destroy(pipeDecode);
 		return NULL;
@@ -356,11 +360,17 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 
 
 	if(pipeDecode->jmp_eqz_neqz != nop){		// TODO: check mux_a_sel what it is
-		//operandA = pipeDecode->nextPC;		// We're using pc as multiply of 4 inside the datapath
+#ifdef RELATIVE_JUMP
+		operandA = pipeDecode->nextPC;		// We're using pc as multiply of 4 inside the datapath
+#else		
 		operandA = 0;
+#endif
 #ifdef DEBUG
-		//printf("[EXE] Using next PC as operand A: 0x%08x\n", operandA);
+#ifdef RELATIVE_JUMP
+		printf("[EXE] Using next PC as operand A: 0x%08x\n", operandA);
+#else		
 		printf("[EXE] Jumping, 0x0 as operand A\n");
+#endif
 #endif
 	}else {
 		operandA = pipeDecode->rs1_val;
@@ -544,6 +554,12 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 
 	pipeEx->ALU_out = ALU_out;
 	pipeEx->jump = toJump;
+#ifdef DELAYSLOT1
+	if(pipeEx->jump)
+		cpu->pc = pipeEx->ALU_out;
+	else
+		cpu->pc++; 
+#endif
 
 	// Propagate old signals
 	pipeEx->nextPC = pipeDecode->nextPC;
@@ -578,8 +594,6 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	cpu_t *cpu = (cpu_t*)handle;
 	if(pipeEx == NULL){
 		fprintf(stderr, "Failed to access pipeEx or not reached yet\n");
-		printf("Incrementing PC, not reached Mem access at the moment\n");
-		cpu->pc++;
 		return NULL;
 	}
 	pipeMem_t *pipeMem;
@@ -588,7 +602,6 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 
 	pipeMem = (pipeMem_t*)malloc(sizeof(pipeMem_t));
 	if(pipeMem == NULL) {
-		cpu->pc++;
 		fprintf(stderr, "Failed to allocate memory for pipeMem\n");
 		return NULL;
 	}
@@ -614,12 +627,11 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	// TODO: check when the PC gets updated after the branch resolution
 	if(pipeEx->jump){
 		//  If jump == true then ALU_out will hold the new PC
-		cpu->pc = pipeEx->ALU_out/4;
+		pipeMem->nextPC = pipeEx->ALU_out/4;
 #ifdef DEBUG
 		printf("[MEM] JUMPING at 0x%08x\n", cpu->pc);
 #endif
 	}else {
-		cpu->pc++;
 #ifdef DEBUG
 		printf("[MEM] Incrementing PC\n");
 #endif
@@ -646,6 +658,12 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	// Previous pipe is now useless
 	memory_destroy(pipeEx);
 
+#ifdef DELAYSLOT2
+	if(pipeMem->jump)
+		cpu->pc = pipeMem->ALU_out;
+	else
+		cpu->pc++; 
+#endif
 	return pipeMem;
 }
 
@@ -662,7 +680,12 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 
 	cpu_t *cpu = (cpu_t*)handle;
 	uint32_t val_to_store;
-
+#ifdef DELAYSLOT3
+	if(pipeMem->jump)
+		cpu->pc = pipeMem->ALU_out;
+	else
+		cpu->pc++; 
+#endif
 	if (pipeMem->writeRF) {
 		if(pipeMem->jump) {
 			// JAL instruction -- rd set to 31
@@ -700,7 +723,6 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 // Execute one step
 void cpu_step(void* handle) {
 	cpu_t* cpu = (cpu_t*)handle;
-	static uint8_t iteration = 0; 	
 	static pipeFetch_t 	*pipeFetch	= NULL;
 	static pipeDecode_t *pipeDecode	= NULL;
 	static pipeEx_t 	*pipeEx		= NULL;
@@ -710,24 +732,34 @@ void cpu_step(void* handle) {
 	// with the previous pipe
 	// At the end of each function the used pipe will be
 	// destroyed to avoid overuse of memory
-	if(iteration > 3)
+	if(g_iteration > 3)
 		instruction_WB(handle, pipeMem);
-
-	if(iteration > 2)
-		pipeMem	= instruction_mem(handle, pipeEx);
+#ifdef DELAYSLOT3
 	else
-		// During normal operation is MEM that will update the PC
-		cpu->pc++;
-	if(iteration > 1)
+		cpu->pc++; // During normal operation is WB that will update the PC
+#endif
+
+	if(g_iteration > 2)
+		pipeMem	= instruction_mem(handle, pipeEx);
+#ifdef DELAYSLOT2
+	else
+		cpu->pc++; // During normal operation is WB that will update the PC
+#endif
+
+	if(g_iteration > 1)
 		pipeEx = instruction_exe(handle, pipeDecode);
+#ifdef DELAYSLOT1
+	else
+		cpu->pc++; // During normal operation is WB that will update the PC
+#endif
 	
-	if(iteration > 0)
+	if(g_iteration > 0)
 		pipeDecode= instruction_decode(handle, pipeFetch);
 	
 	pipeFetch	= instruction_fetch(handle);
 	
-	if(iteration < 4)
-		iteration++;
+	if(g_iteration < 4)
+		g_iteration++;
 
 }
 

@@ -1,4 +1,4 @@
-.PHONY: all run datapath beqz clean compile
+.PHONY: all run datapath beqz clean compile gdb
 
 CC = gcc
 CFLAGS = -Wall -Wextra
@@ -11,26 +11,31 @@ COMPILER = compiler
 # 	make run [FILENAME=<filename>] [ROWS=<rows>]
 # 	make datapath [ROWS=<rows>]
 # 	make beqz [ROWS=<rows>]
-FILENAME ?= "Datapath_Test.bin.mem"
-FILENAMECOMPILE ?= "Datapath_Test.asm"
+FILENAME ?= "Datapath_Test.asm"
 ROWS ?= -1
 
 # To add debug print info:
 # 	make [options] [OPTIONS] [to_debug=yes]
 to_debug ?= no
+relative_jump ?= no
+delayslot ?= 3
 
+CFLAGS += -DDELAYSLOT$(delayslot)
 ifeq ($(to_debug),yes)
     CFLAGS += -DDEBUG
+endif
+ifeq ($(relative_jump),yes)
+    CFLAGS += -DRELATIVE_JUMP
 endif
 
 all: a.out basicallyGDB.out $(COMPILER)/compiler.out
 	rm -f *.o
 
-run: all
-	./a.out $(TESTPROGRAM)/$(FILENAME) $(ROWS)
+run: all compile
+	./a.out $(TESTPROGRAM)/$(FILENAME).mem $(ROWS)
 
-gdb: all
-	./basicallyGDB.out $(TESTPROGRAM)/$(FILENAME) $(ROWS)
+gdb: all compile
+	./basicallyGDB.out $(TESTPROGRAM)/$(FILENAME).mem $(ROWS)
 
 datapath: all
 	./a.out $(TESTPROGRAM)/Datapath_Test.asm.mem $(ROWS)
@@ -39,10 +44,10 @@ beqz: all
 	./a.out $(TESTPROGRAM)/Branch_Test_beqz.asm.mem $(ROWS)
 
 compile: all
-	$(COMPILER)/compiler.out $(TESTPROGRAM)/$(FILENAMECOMPILE)
+	$(COMPILER)/compiler.out $(TESTPROGRAM)/$(FILENAME)
 
 clean:
-	rm -f *.o a.out
+	rm -f *.o *out
 
 basicallyGDB.out: basicallyGDB.o cpu_model.o
 	$(CC) basicallyGDB.o cpu_model.o -o basicallyGDB.out

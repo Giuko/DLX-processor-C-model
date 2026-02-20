@@ -36,7 +36,7 @@ bool press_and_continue(void *handle){
     // Apply new settings
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-    printf("Press s to check state, q to exit, or any key to continue...\n");
+    printf("Press s to check state, r to restart ,q to exit, or any key to continue...\n");
 
     ch = getchar();  // Read one character immediately
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
@@ -44,6 +44,8 @@ bool press_and_continue(void *handle){
 		print_state(handle);
 	if(ch == 'q')
 		return false;
+	if(ch == 'r')
+		cpu_reset((cpu_t*)handle);
 
     // Restore original settings
 	return true;
