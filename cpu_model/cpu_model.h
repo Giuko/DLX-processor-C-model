@@ -69,12 +69,20 @@ typedef enum {
 	neqz
 } jump_t;
 
+typedef struct {
+	uint32_t DRAM_addr;
+	uint32_t DRAM_data;
+} memoryAccess_t;
+
 // CPU State
 typedef struct {
     uint32_t pc;
     uint32_t regs[32];
     uint32_t DRAM[1024];
     uint32_t IRAM[1024];
+	
+	// It will hold the last memAccess 
+	memoryAccess_t memAccess;
 } cpu_t;
 
 typedef struct{
@@ -160,10 +168,10 @@ typedef struct{
 void* cpu_create();
 
 // Reset CPU
-void cpu_reset(void* handle); 
+void cpu_reset(void *handle); 
 
 // Load instruction into memory
-void cpu_load_instr(void* handle, int addr, uint32_t instr);
+void cpu_load_instr(void *handle, int addr, uint32_t instr);
 
 // Fetch instruction
 pipeFetch_t *instruction_fetch(void *handle);
@@ -183,16 +191,19 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx);
 void instruction_WB(void *handle, pipeMem_t *pipeMem);
 
 // Execute one step
-void cpu_step(void* handle);
+void cpu_step(void *handle);
 
 // Get register value
-uint32_t cpu_get_reg(void* handle, int idx);
+uint32_t cpu_get_reg(void *handle, int idx);
 
 // Get PC
-uint32_t cpu_get_pc(void* handle);
+uint32_t cpu_get_pc(void *handle);
+
+// Get Memory Access
+memoryAccess_t cpu_get_mem_access(void *handle);
 
 // Destroy instance
-void memory_destroy(void* handle);
+void memory_destroy(void *handle);
 
 // Return the string of the instruction
 char *identify_instruction(uint32_t instr);

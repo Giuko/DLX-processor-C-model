@@ -30,17 +30,25 @@ void* cpu_create() {
     int i;
 	memset(cpu, 0, sizeof(cpu_t));
 
-
 	for(i = 0; i < 1024; i++)
 		cpu->IRAM[i] = NOP_Instruction;
+	for(i = 0; i < 1024; i++)
+		cpu->DRAM[i] = 0x0;
     return (void*)cpu;
 }
 
 // Reset CPU
 void cpu_reset(void* handle) {
+	int i;
     cpu_t* cpu = (cpu_t*)handle;
     g_iteration = 0;
 	cpu->pc = -1;
+	cpu->memAccess.DRAM_addr = 0;
+	cpu->memAccess.DRAM_data = 0;
+	for(i = 0; i < 1024; i++)
+		cpu->IRAM[i] = NOP_Instruction;
+	for(i = 0; i < 1024; i++)
+		cpu->DRAM[i] = 0x0;
     memset(cpu->regs, 0, sizeof(cpu->regs));
 }
 
@@ -639,15 +647,23 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	}
 	memset(pipeMem, 0, sizeof(pipeMem_t));
 
-	uint8_t DRAM_addr = pipeEx->ALU_out;
-	uint8_t DRAM_data = pipeEx->rs2_val;
+	uint32_t DRAM_addr = pipeEx->ALU_out;
+	uint32_t DRAM_data = pipeEx->rs2_val;
 	
 	if(pipeEx->controlWord.readMem) {
 		DRAM_out = cpu->DRAM[DRAM_addr];
+		
+		cpu->memAccess.DRAM_addr = DRAM_addr;
+		cpu->memAccess.DRAM_data = 0;
+
 		sprintf(s, "[MEM] Reading from memory\n");
 		print_debug(s);
 	}else if(pipeEx->controlWord.writeMem) {
 		cpu->DRAM[DRAM_addr] = DRAM_data;
+
+		cpu->memAccess.DRAM_addr = DRAM_addr;
+		cpu->memAccess.DRAM_data = DRAM_data;
+		
 		sprintf(s, "[MEM] Writing to memory\n");
 		print_debug(s);
 	}
@@ -685,6 +701,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	
 	// Previous pipe is now useless
 	memory_destroy(pipeEx);
+
 
 #ifdef DELAYSLOT2
 	if(pipeEx->controlWord.useRegisterToJump)
@@ -774,6 +791,13 @@ void cpu_step(void* handle) {
 	else
 		cpu->pc++; // During normal operation is WB that will update the PC
 #endif
+	if(g_iteration > 2){
+		memoryAccess_t mem;
+		char s[64];
+		mem = cpu_get_mem_access(cpu);
+		sprintf(s, "DRAM_ADDR: 0x%08x; DRAM_DATA: 0x%08x", mem.DRAM_addr, mem.DRAM_data);
+		print_debug(s);
+	}
 
 	if(g_iteration > 1)
 		pipeEx = instruction_exe(handle, pipeDecode);
@@ -795,13 +819,34 @@ void cpu_step(void* handle) {
 // Get register value
 uint32_t cpu_get_reg(void* handle, int idx) {
     cpu_t* cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_reg] CPU is NULL\n");
+		return 0;
+	}
     return cpu->regs[idx];
 }
 
 // Get PC
 uint32_t cpu_get_pc(void* handle) {
     cpu_t* cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_pc] CPU is NULL\n");
+		return 0;
+	}
     return cpu->pc;
+}
+
+// Get Memory Access
+memoryAccess_t cpu_get_mem_access(void *handle){
+	memoryAccess_t mem;
+	cpu_t *cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
+		return mem;
+	}
+	mem = cpu->memAccess;
+
+	return mem;
 }
 
 // Destroy instance
