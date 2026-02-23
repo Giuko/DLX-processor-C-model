@@ -6,6 +6,7 @@
 #define MOVE_CURSOR(r, c)    printf("\033[%d;%dH", (r), (c))		// To write in a easy way in '2 different screens'
 #define COLOR_RESET          "\033[0m"								// Reset color of terminal
 #define COLOR_HIGHLIGHT      "\033[1;32m"							// Highlight current row
+#define COLOR_RED      		 "\033[1;31m"							// Highlight in red current row
 #define COLOR_DIM            "\033[2m"
 #define COLOR_BOLD           "\033[1m"
 

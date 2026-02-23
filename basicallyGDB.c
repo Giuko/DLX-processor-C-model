@@ -72,9 +72,9 @@ int main(int argc, char *argv[]) {
 		for (i = 1; flag; i++) {
 			capture_cpu_step(cpu);          // run cpu_step() and grab its stdout
 			ch_pressed = press_and_continue(cpu, i);
-			if(ch_pressed == RESTART)
+			if(ch_pressed == RESTART){
 				cpu_reset(cpu);
-			else if(ch_pressed == QUIT)
+			}else if(ch_pressed == QUIT)
 				flag = false;
 		}
 	}

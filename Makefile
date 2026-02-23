@@ -1,17 +1,19 @@
-.PHONY: all run datapath beqz clean compile gdb
+.PHONY: all run datapath beqz clean compile gdb test
 
 CC = gcc
 CFLAGS = -Wall -Wextra
 
 CPUMODEL = cpu_model
-TESTPROGRAM = test_program
+TESTPROGRAM = programs
 COMPILER = compiler
 INC = inc
+TEST = test
 # The possible ways to run the program is:
 # 	make run [FILENAME=<filename>] [ROWS=<rows>]
 # 	make datapath [ROWS=<rows>]
 # 	make beqz [ROWS=<rows>]
 FILENAME ?= "Datapath_Test.asm"
+TESTFILE1 ?= "testprogram.asm"
 ROWS ?= -1
 
 # To add debug print info:
@@ -28,8 +30,8 @@ ifeq ($(relative_jump),yes)
     CFLAGS += -DRELATIVE_JUMP
 endif
 
-all: a.out basicallyGDB.out $(COMPILER)/compiler.out
-	rm -f *.o
+all: a.out basicallyGDB.out $(COMPILER)/compiler.out test.out
+	find . -type f \( -name "*.o" \) -delete
 
 run: all compile
 	./a.out $(TESTPROGRAM)/$(FILENAME).mem $(ROWS)
@@ -46,10 +48,21 @@ beqz: all
 compile: all
 	$(COMPILER)/compiler.out $(TESTPROGRAM)/$(FILENAME)
 
+test: all compile_test
+	./test.out
+
+compile_test: all
+	$(COMPILER)/compiler.out $(TESTPROGRAM)/$(TESTFILE1)
+
+
+
 clean:
 	find . -type f \( -name "*.o" -o -name "*.out" \) -delete
 	rm -r test_program/*.mem
 
+#
+# GDB
+#
 basicallyGDB.out: basicallyGDB.o cpu_model.o utils.o
 	$(CC) basicallyGDB.o cpu_model.o utils.o -o basicallyGDB.out
 
@@ -65,11 +78,28 @@ main.o: main.c $(CPUMODEL)/cpu_model.h
 utils.o: $(INC)/utils.c $(INC)/utils.h
 	$(CC) $(CFLAGS) -c $(INC)/utils.c
 
+#
+# CPU model
+#
 cpu_model.o: $(CPUMODEL)/cpu_model.c $(CPUMODEL)/cpu_model.h
 	$(CC) $(CFLAGS) -c $(CPUMODEL)/cpu_model.c
 
+#
+# Compiler
+#
 $(COMPILER)/compiler.out: $(COMPILER)/compiler.o $(CPUMODEL)/cpu_model.h
 	$(CC) $(CFLAGS) compiler.o -o $(COMPILER)/compiler.out
 
 $(COMPILER)/compiler.o: $(COMPILER)/compiler.c
 	$(CC) $(CFLAGS) -c $(COMPILER)/compiler.c
+
+#
+# Test
+#
+test.out: test.o cpu_model.o utils.o
+	$(CC) cpu_model.o test.o utils.o -o test.out
+
+test.o: $(TEST)/test.c $(TEST)/test.h
+	$(CC) $(CFLAGS) -c $(TEST)/test.c
+
+

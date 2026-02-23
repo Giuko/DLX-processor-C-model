@@ -46,8 +46,6 @@ void cpu_reset(void* handle) {
 	cpu->memAccess.DRAM_addr = 0;
 	cpu->memAccess.DRAM_data = 0;
 	for(i = 0; i < 1024; i++)
-		cpu->IRAM[i] = NOP_Instruction;
-	for(i = 0; i < 1024; i++)
 		cpu->DRAM[i] = 0x0;
     memset(cpu->regs, 0, sizeof(cpu->regs));
 }
@@ -196,10 +194,12 @@ controlWord_t control_unit(uint32_t instr){
 				cw.writeMem = true;
 				break;
 			case OPCODE_BEQZ:
+				cw.writeRF = false;
 				cw.ALU_opcode = FUNC_ADDU;
 				cw.jmp_eqz_neqz = eqz;
 				break;
 			case OPCODE_BNEZ:
+				cw.writeRF = false;
 				cw.ALU_opcode = FUNC_ADDU;
 				cw.jmp_eqz_neqz = neqz;
 				break;
@@ -754,7 +754,8 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 			sprintf(s, "[WB] Storing ALU_out\n");
 			print_debug(s);
 		}
-		cpu->regs[pipeMem->rd] = val_to_store;	
+		if (pipeMem->rd != 0)
+			cpu->regs[pipeMem->rd] = val_to_store;	
 		sprintf(s, "[WB] Storing to R%-2d\n", pipeMem->rd);
 		print_debug(s);
 	}
