@@ -48,6 +48,7 @@ compile: all
 
 clean:
 	find . -type f \( -name "*.o" -o -name "*.out" \) -delete
+	rm -r test_program/*.mem
 
 basicallyGDB.out: basicallyGDB.o cpu_model.o
 	$(CC) basicallyGDB.o cpu_model.o -o basicallyGDB.out

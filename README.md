@@ -18,7 +18,6 @@ It means that the address of the memory is computed as R\_off+imm.
 
 At the moment the model is done with no particular attention to make it scalable so there are some intentional errors:
 - Control word generation in decode
-- Branch instruction decoded as JTYPE and not as ITYPE
 
 ## Available Commands
 
