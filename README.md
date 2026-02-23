@@ -10,6 +10,8 @@ It expects:
 - **RTYPE**: *Instruction RD, RS1, RS2*
 - **ITYPE**: *Instruction RD, RS, #imm*
 - **JTYPE**: *Instruction label*
+
+
 Some particular attention on SW, LW:
 - *SW RS, R\_off, imm*
 - *LW RD, R\_off, imm*
@@ -49,13 +51,13 @@ make gdb [options]
 
 ## Available Options
 
-| Option | Description | Default |
-|---------|-------------|----------|
-| `FILENAME=<filename>` | Assembly file located in the `test_program` folder | `Datapath_Test.asm` |
-| `ROWS=<rows>` | Number of instructions (rows) to execute. Use `-1` to run the entire program | `-1` |
-| `to_debug=<yes/no>` | Enable extra debug output | `no` |
-| `delayslot=<1|2|3>` | Select CPU delay slot model to simulate | `3` |
-| `relative_jump=<yes/no>` | Controls jump address calculation:<br>• `yes` → compute as `addr + imm`<br>• `no` → compute as `imm` | `no` |
+|          Option           |                      Description                      |        Default values        |
+|---------------------------|-------------------------------------------------------|------------------------------|
+| `FILENAME=<filename>`     | Assembly file located in the `test_program` folder    | `Datapath_Test.asm` |
+| `ROWS=<rows>`             | Number of instructions (rows) to execute. Use `-1` to run the entire program | `-1` |
+| `to_debug=<yes/no>`       | Enable extra debug output                             | `no` |
+| `delayslot=<1\|2\|3>`     | Select CPU delay slot model to simulate               | `3` |
+| `relative_jump=<yes/no>`  | Controls jump address calculation:<br>• `yes` → compute as `addr + imm`<br>• `no` → compute as `imm` | `no` |
 
 ---
 
