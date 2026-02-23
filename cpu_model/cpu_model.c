@@ -156,11 +156,9 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		// To make it simple, the ALU_opcode is the same as func
 		ALU_opcode = func;
 
-	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ || opcode == OPCODE_JR || opcode == OPCODE_JALR) {	
+	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR) {	
 		// J-Type
 		// | opcode (6) | immediate (26) |
-		// Branch
-		// | opcode (6) | rs1 (5) | xxxx (5) | immediate (16) | [Itype]
 		if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR)	{
 			imm = instr & 0x03FFFFFF;
 			// Sign extension 
@@ -196,20 +194,10 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 				rd = 31;				// Store the NPC to the register 31
 				writeRF = true;
 				break;
-			case OPCODE_BEQZ:
-				rs1 = (instr >> (32-11)) & 0x1F;
-				rs1_val = cpu->regs[rs1];
-				jmp_eqz_neqz = eqz;
-				break;
-			case OPCODE_BNEZ:
-				rs1 = (instr >> (32-11)) & 0x1F;
-				rs1_val = cpu->regs[rs1];
-				jmp_eqz_neqz = neqz;
-				break;
 			default:
 				// If not a branch/jump instr
 				// Should never goes here
-				fprintf(stderr, "[Decode] I-Type - shouldn't be here\n");
+				fprintf(stderr, "[Decode] J-Type - shouldn't be here\n");
 				memory_destroy(pipeFetch);	// Free used mem
 				return NULL;
 				break;
@@ -298,14 +286,24 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 				ALU_opcode = FUNC_SGEU;
 				break;
 			case OPCODE_LW:
+				ALU_opcode = FUNC_ADDU;
 				readMem = true;
 				break;
 			case OPCODE_SW:
 				// The only I-Type instruction that doesn't 
 				// need to save into the registers
+				ALU_opcode = FUNC_ADDU;
 				writeRF  = false;
 				writeMem = true;
 				rs2_val = cpu->regs[rd];		// In case of a store, mem[rs1_val + offset] = rs2_val (R[rd]) 
+				break;
+			case OPCODE_BEQZ:
+				ALU_opcode = FUNC_ADDU;
+				jmp_eqz_neqz = eqz;
+				break;
+			case OPCODE_BNEZ:
+				ALU_opcode = FUNC_ADDU;
+				jmp_eqz_neqz = neqz;
 				break;
 			default:
 				// Should never goes here
@@ -861,7 +859,7 @@ char *identify_instruction(uint32_t instr){
 
 		//snprintf(instr_str+len, 64-len, " | rs1=%u | rs2=%u | rd=%u | func=%s",rs1, rs2, rd, func_str);
 		snprintf(instr_str+len, 64-len, "%s  R%u, R%u, R%-2u ",func_str, rd, rs1, rs2);
-	} else if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ) { 
+	} else if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR) { 
 		// JTYPE
 		imm = instr & 0x03FFFFFF;
 		
@@ -881,7 +879,10 @@ char *identify_instruction(uint32_t instr){
 			imm |= 0xFFFF0000;
 
 		//snprintf(instr_str+len, 64-len, " rs1=%u | rd=%u | imm=0x%08x",rs1, rd, imm);
-		snprintf(instr_str+len, 64-len, " R%u, R%u, 0x%08x", rd, rs1, imm);
+		if (opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ)
+			snprintf(instr_str+len, 64-len, " R%u, 0x%08x", rs1, imm);
+		else
+			snprintf(instr_str+len, 64-len, " R%u, R%u, 0x%08x", rd, rs1, imm);
 	}
 
 

@@ -47,7 +47,7 @@ compile: all
 	$(COMPILER)/compiler.out $(TESTPROGRAM)/$(FILENAME)
 
 clean:
-	rm -f *.o *out
+	find . -type f \( -name "*.o" -o -name "*.out" \) -delete
 
 basicallyGDB.out: basicallyGDB.o cpu_model.o
 	$(CC) basicallyGDB.o cpu_model.o -o basicallyGDB.out
