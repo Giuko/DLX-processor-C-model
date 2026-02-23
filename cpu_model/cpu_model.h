@@ -76,9 +76,23 @@ typedef struct {
     uint32_t DRAM[1024];
     uint32_t IRAM[1024];
 } cpu_t;
+
+typedef struct{
+	uint16_t 	ALU_opcode;
+	jump_t 		jmp_eqz_neqz;
+	bool 		writeRF;
+	bool 		useImm;
+	bool 		writeMem;
+	bool 		readMem;
+	bool		useRegisterToJump;
+} controlWord_t;
+
 typedef struct {
 	uint32_t instr;
 	uint32_t nextPC;
+
+	// Controls
+	controlWord_t controlWord;
 
 	// Extra
 	char instr_str[64];
@@ -93,13 +107,7 @@ typedef struct {
 	uint32_t imm;
 
 	// Controls
-	uint16_t 	ALU_opcode;
-	jump_t 		jmp_eqz_neqz;
-	bool 		writeRF;
-	bool 		useImm;
-	bool 		writeMem;
-	bool 		readMem;
-	bool		useRegisterToJump;
+	controlWord_t controlWord;
 
 	// Propagate old signals
 	uint32_t nextPC;
@@ -117,16 +125,13 @@ typedef struct{
 	bool		jump;		// If true PC = computedPC
 
 	// Controls
-	bool 		writeRF;
-	bool 		writeMem;
-	bool 		readMem;
+	controlWord_t controlWord;
 
 	// Propagate old signals
 	uint32_t nextPC;
 	uint32_t rs1_val;		// To be used as jump register
 	uint32_t rs2_val;		// To be used as DRAM_data
 	uint8_t  rd;
-	bool		useRegisterToJump;
 	
 	// Extra
 	char instr_str[64];
@@ -137,16 +142,14 @@ typedef struct{
 	uint32_t DRAM_out;
 
 	// Controls
-	bool	writeRF;
-	bool	readMem;
-	bool	jump;			// If true PC = computedPC
+	controlWord_t controlWord;
 	
 	// Propagate old signals
 	uint32_t rs1_val;		// To be used as jump register
 	uint32_t ALU_out; 
 	uint32_t nextPC;
 	uint8_t  rd;
-	bool		useRegisterToJump;
+	bool	jump;			// If true PC = computedPC
 	
 	// Extra
 	char instr_str[64];

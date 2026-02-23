@@ -17,9 +17,19 @@ void print_debug(char *s){
 
 // Create CPU instance
 void* cpu_create() {
-    cpu_t* cpu = (cpu_t*)malloc(sizeof(cpu_t));
+
+#ifndef DELAYSLOT3
+#ifndef DELAYSLOT2
+#ifndef DELAYSLOT1
+	fprintf(stderr, "[CRITICAL ERROR] DELAYSLOT not defined correctly\n");
+	exit(-1);
+#endif
+#endif
+#endif
+	cpu_t* cpu = (cpu_t*)malloc(sizeof(cpu_t));
     int i;
 	memset(cpu, 0, sizeof(cpu_t));
+
 
 	for(i = 0; i < 1024; i++)
 		cpu->IRAM[i] = NOP_Instruction;
@@ -41,6 +51,158 @@ void cpu_load_instr(void* handle, int addr, uint32_t instr) {
 		cpu->IRAM[addr] = NOP_Instruction;
 	else
     	cpu->IRAM[addr] = instr;				// Or addr/4
+}
+
+
+controlWord_t control_unit(uint32_t instr){
+	controlWord_t cw;
+	uint32_t opcode;
+	uint16_t func;
+	char s[128];
+
+	cw.ALU_opcode   		= FUNC_NOP;
+	cw.jmp_eqz_neqz 		= nop;
+	cw.writeRF 				= false;
+	cw.writeMem	 			= false;
+	cw.readMem		 		= false;
+	cw.useImm		 		= false;
+	cw.useRegisterToJump 	= false;
+	
+	
+	// Get opcode
+	opcode = (instr >> (32-6)) & 0x3F;
+	func = instr & 0x7FF;
+	sprintf(s, "[CONTROL] OPCODE = 0x%02x\n", opcode);
+	print_debug(s);
+	// Decode instruction
+	if (opcode == OPCODE_NOP) {
+		// Do nothing
+		print_debug("[CONTROL] NOP\n");
+		return cw;
+	} else if (opcode == 0x00) {	
+		// R-Type
+		cw.writeRF = true;
+		// To make it simple, the ALU_opcode is the same as func
+		cw.ALU_opcode = func;
+
+	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR) {	
+		// J-Type
+		if(opcode == OPCODE_JR || opcode == OPCODE_JALR)
+			cw.useRegisterToJump = true;
+
+		cw.useImm = true;
+		cw.ALU_opcode = FUNC_ADDU;
+		
+		// Get controls signal to use to the next steps
+		switch (opcode) {
+			case OPCODE_JR:
+			case OPCODE_J:
+				cw.jmp_eqz_neqz = jump;
+				break;
+			case OPCODE_JALR:
+			case OPCODE_JAL:
+				cw.jmp_eqz_neqz = jump_link;
+				cw.writeRF = true;
+				break;
+			default:
+				fprintf(stderr, "[CONTROL] J-Type - shouldn't be here\n");
+				break;
+		}
+	} else { 
+		// I-Type
+		
+		cw.useImm  = true;
+		cw.writeRF = true;
+
+		// Get controls signal to use to the next steps
+		switch (opcode) {
+			case OPCODE_ADDI:
+				cw.ALU_opcode = FUNC_ADD;
+				break;
+			case OPCODE_ADDUI:
+				cw.ALU_opcode = FUNC_ADDU;
+				break;
+			case OPCODE_SUBI:
+				cw.ALU_opcode = FUNC_SUB;
+				break;
+			case OPCODE_SUBUI:
+				cw.ALU_opcode = FUNC_SUBU;
+				break;
+			case OPCODE_ANDI:
+				cw.ALU_opcode = FUNC_AND;
+				break;
+			case OPCODE_ORI:
+				cw.ALU_opcode = FUNC_OR;
+				break;
+			case OPCODE_XORI:
+				cw.ALU_opcode = FUNC_XOR;
+				break;
+			case OPCODE_SLLI:
+				cw.ALU_opcode = FUNC_SLL;
+				break;
+			case OPCODE_SRLI:
+				cw.ALU_opcode = FUNC_SRL;
+				break;
+			case OPCODE_SRAI:
+				cw.ALU_opcode = FUNC_SRA;
+				break;
+			case OPCODE_SEQI:
+				cw.ALU_opcode = FUNC_SEQ;
+				break;
+			case OPCODE_SNEI:
+				cw.ALU_opcode = FUNC_SNE;
+				break;
+			case OPCODE_SLTI:
+				cw.ALU_opcode = FUNC_SLT;
+				break;
+			case OPCODE_SGTI:
+				cw.ALU_opcode = FUNC_SGT;
+				break;
+			case OPCODE_SLEI:
+				cw.ALU_opcode = FUNC_SLE;
+				break;
+			case OPCODE_SGEI:
+				cw.ALU_opcode = FUNC_SGE;
+				break;
+			case OPCODE_SLTUI:
+				cw.ALU_opcode = FUNC_SLTU;
+				break;
+			case OPCODE_SGTUI:
+				cw.ALU_opcode = FUNC_SGTU;
+				break;
+			case OPCODE_SLEUI:
+				cw.ALU_opcode = FUNC_SLEU;
+				break;
+			case OPCODE_SGEUI:
+				cw.ALU_opcode = FUNC_SGEU;
+				break;
+			case OPCODE_LW:
+				cw.ALU_opcode = FUNC_ADDU;
+				cw.readMem = true;
+				break;
+			case OPCODE_SW:
+				// The only I-Type instruction that doesn't 
+				// need to save into the registers
+				cw.ALU_opcode = FUNC_ADDU;
+				cw.writeRF  = false;
+				cw.writeMem = true;
+				break;
+			case OPCODE_BEQZ:
+				cw.ALU_opcode = FUNC_ADDU;
+				cw.jmp_eqz_neqz = eqz;
+				break;
+			case OPCODE_BNEZ:
+				cw.ALU_opcode = FUNC_ADDU;
+				cw.jmp_eqz_neqz = neqz;
+				break;
+			default:
+				// Should never goes here
+				fprintf(stderr, "[CONTROL] I-Type - shouldn't be here\n");
+				break;
+		}	
+	}
+
+	return cw;
 }
 
 // This is a pipelined processor
@@ -68,6 +230,8 @@ pipeFetch_t *instruction_fetch(void *handle) {
 
 	strcpy(pipeFetch->instr_str, identify_instruction(pipeFetch->instr));
 	pipeFetch->nextPC = (cpu->pc+1)*4;
+	pipeFetch->controlWord = control_unit(pipeFetch->instr);
+
 	printf("[FETCH] %s\n", pipeFetch->instr_str);
 	return pipeFetch;	
 }
@@ -98,16 +262,6 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	uint32_t rs1_val = 0;
 	uint32_t rs2_val = 0;
 	uint32_t imm	 = 0;
-
-	// Controls
-	uint16_t 		ALU_opcode   = FUNC_NOP;
-	jump_t   		jmp_eqz_neqz = nop;
-	bool			writeRF 	 = false;
-	bool			writeMem	 = false;
-	bool 			readMem		 = false;
-	bool			useImm		 = false;
-	bool			useRegisterToJump = false;
-
 
 
 	pipeDecode = (pipeDecode_t*)malloc(sizeof(pipeDecode_t));
@@ -149,50 +303,30 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		sprintf(s, "[DECODE]: RTYPE | rs1: R%-2d [%d] | rs2: R%-2d [%d] | r: R%-2d | func: %#06x\n", rs1, rs1_val, rs2, rs2_val, rd, func);
 		print_debug(s);
 
-		writeRF = true;
-
-		// Get controls signal to use to the next steps
-		
-		// To make it simple, the ALU_opcode is the same as func
-		ALU_opcode = func;
 
 	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR) {	
 		// J-Type
 		// | opcode (6) | immediate (26) |
-		if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR)	{
-			imm = instr & 0x03FFFFFF;
-			// Sign extension 
-			if(imm >> 25)
-				imm |= 0xFC000000;
-			if(opcode == OPCODE_JR || opcode == OPCODE_JALR) {
-				useRegisterToJump = true;
-				rs1 = (instr >> (32-11)) & 0x1F;
-				rs1_val = cpu->regs[rs1];
-			}
-		} else {
-			imm = instr & 0xFFFF;
-			
-			// Sign extension
-			if(imm >> 15)
-				imm |= 0xFFFF0000;
+		imm = instr & 0x03FFFFFF;
+		// Sign extension 
+		if(imm >> 25)
+			imm |= 0xFC000000;
+		if(opcode == OPCODE_JR || opcode == OPCODE_JALR) {
+			rs1 = (instr >> (32-11)) & 0x1F;
+			rs1_val = cpu->regs[rs1];
 		}
+			
 		sprintf(s, "[DECODE]: JTYPE | imm: %#010x\n", imm);
 		print_debug(s);
-
-		useImm = true;
-		ALU_opcode = FUNC_ADDU;
 		
 		// Get controls signal to use to the next steps
 		switch (opcode) {
 			case OPCODE_JR:
 			case OPCODE_J:
-				jmp_eqz_neqz = jump;
 				break;
 			case OPCODE_JALR:
 			case OPCODE_JAL:
-				jmp_eqz_neqz = jump_link;
 				rd = 31;				// Store the NPC to the register 31
-				writeRF = true;
 				break;
 			default:
 				// If not a branch/jump instr
@@ -220,97 +354,9 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		sprintf(s, "[DECODE]: ITYPE | rs1: R%-2d [%d] | r: R%-2d | imm: %#010x\n", rs1, rs1_val, rd, imm);
 		print_debug(s);
 
-		useImm  = true;
-		writeRF = true;
-
-		// Get controls signal to use to the next steps
-		switch (opcode) {
-			case OPCODE_ADDI:
-				ALU_opcode = FUNC_ADD;
-				break;
-			case OPCODE_ADDUI:
-				ALU_opcode = FUNC_ADDU;
-				break;
-			case OPCODE_SUBI:
-				ALU_opcode = FUNC_SUB;
-				break;
-			case OPCODE_SUBUI:
-				ALU_opcode = FUNC_SUBU;
-				break;
-			case OPCODE_ANDI:
-				ALU_opcode = FUNC_AND;
-				break;
-			case OPCODE_ORI:
-				ALU_opcode = FUNC_OR;
-				break;
-			case OPCODE_XORI:
-				ALU_opcode = FUNC_XOR;
-				break;
-			case OPCODE_SLLI:
-				ALU_opcode = FUNC_SLL;
-				break;
-			case OPCODE_SRLI:
-				ALU_opcode = FUNC_SRL;
-				break;
-			case OPCODE_SRAI:
-				ALU_opcode = FUNC_SRA;
-				break;
-			case OPCODE_SEQI:
-				ALU_opcode = FUNC_SEQ;
-				break;
-			case OPCODE_SNEI:
-				ALU_opcode = FUNC_SNE;
-				break;
-			case OPCODE_SLTI:
-				ALU_opcode = FUNC_SLT;
-				break;
-			case OPCODE_SGTI:
-				ALU_opcode = FUNC_SGT;
-				break;
-			case OPCODE_SLEI:
-				ALU_opcode = FUNC_SLE;
-				break;
-			case OPCODE_SGEI:
-				ALU_opcode = FUNC_SGE;
-				break;
-			case OPCODE_SLTUI:
-				ALU_opcode = FUNC_SLTU;
-				break;
-			case OPCODE_SGTUI:
-				ALU_opcode = FUNC_SGTU;
-				break;
-			case OPCODE_SLEUI:
-				ALU_opcode = FUNC_SLEU;
-				break;
-			case OPCODE_SGEUI:
-				ALU_opcode = FUNC_SGEU;
-				break;
-			case OPCODE_LW:
-				ALU_opcode = FUNC_ADDU;
-				readMem = true;
-				break;
-			case OPCODE_SW:
-				// The only I-Type instruction that doesn't 
-				// need to save into the registers
-				ALU_opcode = FUNC_ADDU;
-				writeRF  = false;
-				writeMem = true;
+		if(opcode == OPCODE_SW)
 				rs2_val = cpu->regs[rd];		// In case of a store, mem[rs1_val + offset] = rs2_val (R[rd]) 
-				break;
-			case OPCODE_BEQZ:
-				ALU_opcode = FUNC_ADDU;
-				jmp_eqz_neqz = eqz;
-				break;
-			case OPCODE_BNEZ:
-				ALU_opcode = FUNC_ADDU;
-				jmp_eqz_neqz = neqz;
-				break;
-			default:
-				// Should never goes here
-				fprintf(stderr, "[Decode] I-Type - shouldn't be here\n");
-				memory_destroy(pipeFetch);	// Free used mem
-				return NULL;
-		}	
+			
 	}
 
 
@@ -321,14 +367,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	pipeDecode->rs2_val = rs2_val;
 	pipeDecode->imm 	= imm;
 
-	pipeDecode->jmp_eqz_neqz	= jmp_eqz_neqz;
-	pipeDecode->ALU_opcode		= ALU_opcode;
-	pipeDecode->writeRF 		= writeRF;
-	pipeDecode->useImm			= useImm;
-	pipeDecode->writeMem		= writeMem;
-	pipeDecode->readMem			= readMem;
-	pipeDecode->useRegisterToJump = useRegisterToJump;
-	
+	pipeDecode->controlWord = pipeFetch->controlWord;
 	strcpy(pipeDecode->instr_str, pipeFetch->instr_str);
 	printf("[DECODE] %s\n", pipeDecode->instr_str);
 	// Previous pipe is now useless
@@ -341,21 +380,22 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 // Ex stage
 pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	cpu_t *cpu = (cpu_t*)handle;
+	char s[64];
 	if(cpu == NULL){
 		fprintf(stderr, "Failed to access CPU\n");
 		memory_destroy(pipeDecode);
+		printf("[EXE] Failed to access CPU\n");
 		return NULL;
 	}
 	if (pipeDecode == NULL) {
 		fprintf(stderr, "Failed to access pipeDecode or not reached yet\n");
+		printf("[EXE] Failed to access pipeDecode or not reached yet\n");
 		return NULL;
 	}
-//	cpu_t *cpu = (cpu_t*)handle;
-	char s[64];
 	pipeEx_t *pipeEx;
-	uint16_t ALU_opcode = pipeDecode->ALU_opcode;
+	uint16_t ALU_opcode = pipeDecode->controlWord.ALU_opcode;
 	
-	sprintf(s, "[EXE] ALU_OPCODE: 0x%x\n", pipeDecode->ALU_opcode);
+	sprintf(s, "[EXE] ALU_OPCODE: 0x%x\n", pipeDecode->controlWord.ALU_opcode);
 	print_debug(s);
 
 	uint32_t 	ALU_out;
@@ -367,12 +407,13 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx = (pipeEx_t*)malloc(sizeof(pipeEx_t));
 	if(pipeEx == NULL) {
 		fprintf(stderr, "Failed to allocate memory for pipeEx\n");
+		printf("[EXE] Failed to allocate memory for pipeEx\n");
 		return NULL;
 	}
 	memset(pipeEx, 0, sizeof(pipeEx_t));
 
 
-	if(pipeDecode->jmp_eqz_neqz != nop){		// TODO: check mux_a_sel what it is
+	if(pipeDecode->controlWord.jmp_eqz_neqz != nop){		// TODO: check mux_a_sel what it is
 #ifdef RELATIVE_JUMP
 		operandA = pipeDecode->nextPC;		// We're using pc as multiply of 4 inside the datapath
 		sprintf(s, "[EXE] Using next PC as operand A: 0x%08x\n", operandA);
@@ -386,7 +427,7 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 		sprintf(s, "[EXE] Using RS1 as operand A: 0x%08x\n", operandA);
 		print_debug(s);
 	}
-	if(pipeDecode->useImm){
+	if(pipeDecode->controlWord.useImm){
 		operandB = pipeDecode->imm;
 		sprintf(s, "[EXE] Using immediate as operand B: 0x%08x\n", operandB);
 		print_debug(s);
@@ -504,11 +545,12 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 		default:
 			// Should never goes here
 			fprintf(stderr, "[EXE] shouldn't be here | ALU_opcode = %x\n", ALU_opcode);
+			printf("[EXE] shouldn't be here | ALU_opcode = %x\n", ALU_opcode);
 			memory_destroy(pipeDecode);	// Free used mem
 			return NULL;
 	}		
 
-	switch (pipeDecode->jmp_eqz_neqz) {
+	switch (pipeDecode->controlWord.jmp_eqz_neqz) {
 		case jump:
 			sprintf(s, "[EXE] JUMP\n");
 			print_debug(s);
@@ -540,7 +582,7 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->ALU_out = ALU_out;
 	pipeEx->jump = toJump;
 #ifdef DELAYSLOT1
-	if(pipeEx->useRegisterToJump)
+	if(pipeEx->controlWord.useRegisterToJump)
 		cpu->pc = pipeEx->rs1_val/4;
 	else if(pipeEx->jump)
 		cpu->pc = pipeEx->ALU_out/4;
@@ -555,10 +597,7 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->rs1_val = pipeDecode->rs1_val;
 
 	// Contols
-	pipeEx->writeRF = pipeDecode->writeRF;
-	pipeEx->writeMem = pipeDecode->writeMem;
-	pipeEx->readMem = pipeDecode->readMem;
-	pipeEx->useRegisterToJump = pipeDecode->useRegisterToJump;
+	pipeEx->controlWord = pipeDecode->controlWord;
 	
 	strcpy(pipeEx->instr_str, pipeDecode->instr_str);
 	if(strlen(pipeEx->instr_str) == 0)
@@ -577,12 +616,14 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	if(handle == NULL){
 		fprintf(stderr, "Failed to access CPU\n");
+		printf("[MEM] Failed to access CPU\n");
 		memory_destroy(pipeEx);
 		return NULL;
 	}
 	cpu_t *cpu = (cpu_t*)handle;
 	if(pipeEx == NULL){
 		fprintf(stderr, "Failed to access pipeEx or not reached yet\n");
+		printf("[MEM] Failed to access pipeEx or not reached yet\n");
 		return NULL;
 	}
 	pipeMem_t *pipeMem;
@@ -593,6 +634,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	pipeMem = (pipeMem_t*)malloc(sizeof(pipeMem_t));
 	if(pipeMem == NULL) {
 		fprintf(stderr, "Failed to allocate memory for pipeMem\n");
+		printf("[MEM] Failed to allocate memory for pipeMem\n");
 		return NULL;
 	}
 	memset(pipeMem, 0, sizeof(pipeMem_t));
@@ -600,11 +642,11 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	uint8_t DRAM_addr = pipeEx->ALU_out;
 	uint8_t DRAM_data = pipeEx->rs2_val;
 	
-	if(pipeEx->readMem) {
+	if(pipeEx->controlWord.readMem) {
 		DRAM_out = cpu->DRAM[DRAM_addr];
 		sprintf(s, "[MEM] Reading from memory\n");
 		print_debug(s);
-	}else if(pipeEx->writeMem) {
+	}else if(pipeEx->controlWord.writeMem) {
 		cpu->DRAM[DRAM_addr] = DRAM_data;
 		sprintf(s, "[MEM] Writing to memory\n");
 		print_debug(s);
@@ -632,10 +674,8 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	pipeMem->rs1_val	= pipeEx->rs1_val;
 
 	// Controls
-	pipeMem->writeRF	= pipeEx->writeRF;
-	pipeMem->readMem	= pipeEx->readMem;
-	pipeMem->jump		= pipeEx->jump;
-	pipeMem->useRegisterToJump = pipeEx->useRegisterToJump;
+	pipeMem->controlWord	= pipeEx->controlWord;
+	pipeMem->jump			= pipeEx->jump;
 
 	strcpy(pipeMem->instr_str, pipeEx->instr_str);
 	if(strlen(pipeMem->instr_str) == 0)
@@ -647,7 +687,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	memory_destroy(pipeEx);
 
 #ifdef DELAYSLOT2
-	if(pipeEx->useRegisterToJump)
+	if(pipeEx->controlWord.useRegisterToJump)
 		cpu->pc = pipeEx->rs1_val/4;
 	else if(pipeMem->jump)
 		cpu->pc = pipeMem->ALU_out/4;
@@ -672,20 +712,20 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 	uint32_t val_to_store;
 	char s[64];
 #ifdef DELAYSLOT3
-	if(pipeMem->useRegisterToJump)
+	if(pipeMem->controlWord.useRegisterToJump)
 		cpu->pc = pipeMem->rs1_val/4;
 	else if(pipeMem->jump)
 		cpu->pc = pipeMem->ALU_out/4;
 	else
 		cpu->pc++; 
 #endif
-	if (pipeMem->writeRF) {
+	if (pipeMem->controlWord.writeRF) {
 		if(pipeMem->jump) {
 			// JAL instruction -- rd set to 31
 			val_to_store = pipeMem->nextPC;
 			sprintf(s, "[WB] Storing next PC: 0x%08x\n", val_to_store);
 			print_debug(s);
-		}else if(pipeMem->readMem) {
+		}else if(pipeMem->controlWord.readMem) {
 			// LOAD instruction
 			val_to_store = pipeMem->DRAM_out;
 			sprintf(s, "[WB] Saving to R31 due to link\n");
@@ -717,7 +757,6 @@ void cpu_step(void* handle) {
 	static pipeDecode_t *pipeDecode	= NULL;
 	static pipeEx_t 	*pipeEx		= NULL;
 	static pipeMem_t	*pipeMem	= NULL;
-
 	// In reverse, in this way it will be feed
 	// with the previous pipe
 	// At the end of each function the used pipe will be

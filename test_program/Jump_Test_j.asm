@@ -4,11 +4,15 @@ nop
 nop
 nop
 nop
-nop		; r1 written back
-j L1	
+nop		; r1 written back	
 ori r2, r1, #4
 andi r3, r1, #4
 xori r4, r1, #4
 ori r5, r1, #4
 andi r6, r1, #4
 xori r7, r1, #4
+halt:
+j halt 
+nop
+nop
+nop

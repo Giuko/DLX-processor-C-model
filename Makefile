@@ -4,9 +4,9 @@ CC = gcc
 CFLAGS = -Wall -Wextra
 
 CPUMODEL = cpu_model
-TESTPROGRAM = test_propram
+TESTPROGRAM = test_program
 COMPILER = compiler
-
+INC = inc
 # The possible ways to run the program is:
 # 	make run [FILENAME=<filename>] [ROWS=<rows>]
 # 	make datapath [ROWS=<rows>]
@@ -50,8 +50,8 @@ clean:
 	find . -type f \( -name "*.o" -o -name "*.out" \) -delete
 	rm -r test_program/*.mem
 
-basicallyGDB.out: basicallyGDB.o cpu_model.o
-	$(CC) basicallyGDB.o cpu_model.o -o basicallyGDB.out
+basicallyGDB.out: basicallyGDB.o cpu_model.o utils.o
+	$(CC) basicallyGDB.o cpu_model.o utils.o -o basicallyGDB.out
 
 basicallyGDB.o: basicallyGDB.c $(CPUMODEL)/cpu_model.h
 	$(CC) $(CFLAGS) -c basicallyGDB.c 
@@ -61,6 +61,9 @@ a.out: main.o cpu_model.o
 
 main.o: main.c $(CPUMODEL)/cpu_model.h
 	$(CC) $(CFLAGS) -c main.c 
+
+utils.o: $(INC)/utils.c $(INC)/utils.h
+	$(CC) $(CFLAGS) -c $(INC)/utils.c
 
 cpu_model.o: $(CPUMODEL)/cpu_model.c $(CPUMODEL)/cpu_model.h
 	$(CC) $(CFLAGS) -c $(CPUMODEL)/cpu_model.c

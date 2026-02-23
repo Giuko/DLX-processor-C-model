@@ -18,9 +18,6 @@ Some particular attention on SW, LW:
 
 It means that the address of the memory is computed as R\_off+imm.
 
-At the moment the model is done with no particular attention to make it scalable so there are some intentional errors:
-- Control word generation in decode
-
 ## Available Commands
 
 You can run the program using the following `make` targets:
