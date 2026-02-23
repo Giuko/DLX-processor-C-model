@@ -7,6 +7,14 @@
 
 uint8_t g_iteration = 0; 	
 
+// Print only if DEBUG is defined
+void print_debug(char *s){
+#ifdef DEBUG
+	printf(s);
+#endif
+	return;
+}
+
 // Create CPU instance
 void* cpu_create() {
     cpu_t* cpu = (cpu_t*)malloc(sizeof(cpu_t));
@@ -46,6 +54,7 @@ pipeFetch_t *instruction_fetch(void *handle) {
 		return NULL;
 	}
 	cpu_t *cpu = (cpu_t*) handle;
+	char s[64];
 	pipeFetch_t *pipeFetch;
 	pipeFetch = (pipeFetch_t*)malloc(sizeof(pipeFetch_t));
 	if(pipeFetch == NULL){
@@ -53,11 +62,10 @@ pipeFetch_t *instruction_fetch(void *handle) {
 		return NULL;
 	}
 	pipeFetch->instr = cpu->IRAM[cpu->pc];
-	// In this implementation is ok to add 1 and not 4 since 
-	// we're grouping the PC as group of 4 bytes
-#ifdef DEBUG
-	printf("[FETCH] Instr: %#010x\n", pipeFetch->instr);
-#endif
+	
+	sprintf(s, "[FETCH] Instr: %#010x\n", pipeFetch->instr);
+	print_debug(s);
+
 	strcpy(pipeFetch->instr_str, identify_instruction(pipeFetch->instr));
 	pipeFetch->nextPC = (cpu->pc+1)*4;
 	printf("[FETCH] %s\n", pipeFetch->instr_str);
@@ -77,6 +85,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		fprintf(stderr, "Failed to access pipeFetch or not reached yet\n");
 		return NULL;
 	}
+	char s[128];
 	cpu_t *cpu = (cpu_t*)handle;
 	pipeDecode_t *pipeDecode;
 	uint32_t instr = pipeFetch->instr;
@@ -110,9 +119,8 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 
 	// Get opcode
 	opcode = (instr >> (32-6)) & 0x3F;
-#ifdef DEBUG
-	printf("[DECODE] OPCODE = 0x%02x\n", opcode);
-#endif
+	sprintf(s, "[DECODE] OPCODE = 0x%02x\n", opcode);
+	print_debug(s);
 	// Decode instruction
 	if (opcode == OPCODE_NOP) {
 		// Do nothing
@@ -138,9 +146,8 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		else
 			rs2_val = cpu->regs[rs2];
 
-#ifdef DEBUG
-		printf("[DECODE]: RTYPE | rs1: R%-2d [%d] | rs2: R%-2d [%d] | r: R%-2d | func: %#06x\n", rs1, rs1_val, rs2, rs2_val, rd, func);
-#endif
+		sprintf(s, "[DECODE]: RTYPE | rs1: R%-2d [%d] | rs2: R%-2d [%d] | r: R%-2d | func: %#06x\n", rs1, rs1_val, rs2, rs2_val, rd, func);
+		print_debug(s);
 
 		writeRF = true;
 
@@ -171,9 +178,8 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 			if(imm >> 15)
 				imm |= 0xFFFF0000;
 		}
-#ifdef DEBUG
-		printf("[DECODE]: JTYPE | imm: %#010x\n", imm);
-#endif
+		sprintf(s, "[DECODE]: JTYPE | imm: %#010x\n", imm);
+		print_debug(s);
 
 		useImm = true;
 		ALU_opcode = FUNC_ADDU;
@@ -223,9 +229,8 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		// Acces RF to read the registers
 		rs1_val = cpu->regs[rs1];
 		
-#ifdef DEBUG
-		printf("[DECODE]: ITYPE | rs1: R%-2d [%d] | r: R%-2d | imm: %#010x\n", rs1, rs1_val, rd, imm);
-#endif
+		sprintf(s, "[DECODE]: ITYPE | rs1: R%-2d [%d] | r: R%-2d | imm: %#010x\n", rs1, rs1_val, rd, imm);
+		print_debug(s);
 
 		useImm  = true;
 		writeRF = true;
@@ -348,11 +353,12 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 		return NULL;
 	}
 //	cpu_t *cpu = (cpu_t*)handle;
+	char s[64];
 	pipeEx_t *pipeEx;
 	uint16_t ALU_opcode = pipeDecode->ALU_opcode;
-#ifdef DEBUG
-	printf("[EXE] ALU_OPCODE: 0x%x\n", pipeDecode->ALU_opcode);
-#endif
+	
+	sprintf(s, "[EXE] ALU_OPCODE: 0x%x\n", pipeDecode->ALU_opcode);
+	print_debug(s);
 
 	uint32_t 	ALU_out;
 	bool		toJump = false;
@@ -371,159 +377,131 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	if(pipeDecode->jmp_eqz_neqz != nop){		// TODO: check mux_a_sel what it is
 #ifdef RELATIVE_JUMP
 		operandA = pipeDecode->nextPC;		// We're using pc as multiply of 4 inside the datapath
+		sprintf(s, "[EXE] Using next PC as operand A: 0x%08x\n", operandA);
 #else		
 		operandA = 0;
+		sprintf(s, "[EXE] Jumping, 0x0 as operand A\n");
 #endif
-#ifdef DEBUG
-#ifdef RELATIVE_JUMP
-		printf("[EXE] Using next PC as operand A: 0x%08x\n", operandA);
-#else		
-		printf("[EXE] Jumping, 0x0 as operand A\n");
-#endif
-#endif
+		print_debug(s);
 	}else {
 		operandA = pipeDecode->rs1_val;
-#ifdef DEBUG
-		printf("[EXE] Using RS1 as operand A: 0x%08x\n", operandA);
-#endif
+		sprintf(s, "[EXE] Using RS1 as operand A: 0x%08x\n", operandA);
+		print_debug(s);
 	}
 	if(pipeDecode->useImm){
 		operandB = pipeDecode->imm;
-#ifdef DEBUG
-		printf("[EXE] Using immediate as operand B: 0x%08x\n", operandB);
-#endif
+		sprintf(s, "[EXE] Using immediate as operand B: 0x%08x\n", operandB);
+		print_debug(s);
 	}else{
 		operandB = pipeDecode->rs2_val;
-#ifdef DEBUG
-		printf("[EXE] Using RS2 as operand B: 0x%08x\n", operandB);
-#endif
+		sprintf(s, "[EXE] Using RS2 as operand B: 0x%08x\n", operandB);
+		print_debug(s);
 	}
 	switch (ALU_opcode) {
 		case 0:
-#ifdef DEBUG
-			printf("[EXE] NOP\n");
-#endif
+			sprintf(s, "[EXE] NOP\n");
+			print_debug(s);
 			break;
 		case FUNC_SLL:
 			ALU_out = operandA << operandB;
-#ifdef DEBUG
-			printf("[EXE] SLL\n");
-#endif
+			sprintf(s, "[EXE] SLL\n");
+			print_debug(s);
 			break;
 		case FUNC_SRL:
 			ALU_out = operandA >> operandB;
-#ifdef DEBUG
-			printf("[EXE] SRL\n");
-#endif
+			sprintf(s, "[EXE] SRL\n");
+			print_debug(s);
 			break;
 		case FUNC_SRA:
 			// with integer, the >> should be arithmetic
 			ALU_out = (int32_t)((int32_t)operandA >> operandB);
-#ifdef DEBUG
-			printf("[EXE] SRA\n");
-#endif
+			sprintf(s, "[EXE] SRA\n");
+			print_debug(s);
 			break;
 		case FUNC_ADD:
 			ALU_out = (int32_t)((int32_t)operandA + (int32_t)operandB);
-#ifdef DEBUG
-			printf("[EXE] ADD\n");
-#endif
+			sprintf(s, "[EXE] ADD\n");
+			print_debug(s);
 			break;
 		case FUNC_ADDU:
 			ALU_out = (operandA + operandB);
-#ifdef DEBUG
-			printf("[EXE] ADDU\n");
-#endif
+			sprintf(s, "[EXE] ADDU\n");
+			print_debug(s);
 			break;
 		case FUNC_SUB:
 			ALU_out = (int32_t)((int32_t)operandA - (int32_t)operandB);
-#ifdef DEBUG
-			printf("[EXE] SUB\n");
-#endif
+			sprintf(s, "[EXE] SUB\n");
+			print_debug(s);
 			break;
 		case FUNC_SUBU:
 			ALU_out = (operandA - operandB);
-#ifdef DEBUG
-			printf("[EXE] SUBU\n");
-#endif
+			sprintf(s, "[EXE] SUBU\n");
+			print_debug(s);
 			break;
 		case FUNC_AND:
 			ALU_out = (operandA & operandB);
-#ifdef DEBUG
-			printf("[EXE] AND\n");
-#endif
+			sprintf(s, "[EXE] AND\n");
+			print_debug(s);
 			break;
 		case FUNC_OR:
 			ALU_out = (operandA | operandB);
-#ifdef DEBUG
-			printf("[EXE] OR\n");
-#endif
+			sprintf(s, "[EXE] OR\n");
+			print_debug(s);
 			break;
 		case FUNC_XOR:
 			ALU_out = (operandA ^ operandB);
-#ifdef DEBUG
-			printf("[EXE] XOR\n");
-#endif
+			sprintf(s, "[EXE] XOR\n");
+			print_debug(s);
 			break;
 		case FUNC_SEQ:
 			ALU_out = (operandA == operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SEQ\n");
-#endif
+			sprintf(s, "[EXE] SEQ\n");
+			print_debug(s);
 			break;
 		case FUNC_SNE:
 			ALU_out = (operandA != operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SNE\n");
-#endif
+			sprintf(s, "[EXE] SNE\n");
+			print_debug(s);
 			break;
 		case FUNC_SLT:
 			ALU_out = ((int32_t)operandA < (int32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SLT\n");
-#endif
+			sprintf(s, "[EXE] SLT\n");
+			print_debug(s);
 			break;
 		case FUNC_SGT:
 			ALU_out = ((int32_t)operandA > (int32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SGT\n");
-#endif
+			sprintf(s, "[EXE] SGT\n");
+			print_debug(s);
 			break;
 		case FUNC_SLE:
 			ALU_out = ((int32_t)operandA <= (int32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SLE\n");
-#endif
+			sprintf(s, "[EXE] SLE\n");
+			print_debug(s);
 			break;
 		case FUNC_SGE:
 			ALU_out = ((int32_t)operandA >= (int32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SGE\n");
-#endif
+			sprintf(s, "[EXE] SGE\n");
+			print_debug(s);
 			break;
 		case FUNC_SLTU:
 			ALU_out = ((uint32_t)operandA < (uint32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SLTU\n");
-#endif
+			sprintf(s, "[EXE] SLTU\n");
+			print_debug(s);
 			break;
 		case FUNC_SGTU:
 			ALU_out = ((uint32_t)operandA > (uint32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SGTU\n");
-#endif
+			sprintf(s, "[EXE] SGTU\n");
+			print_debug(s);
 			break;
 		case FUNC_SLEU:
 			ALU_out = ((uint32_t)operandA <= (uint32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SLEU\n");
-#endif
+			sprintf(s, "[EXE] SLEU\n");
+			print_debug(s);
 			break;
 		case FUNC_SGEU:
 			ALU_out = ((uint32_t)operandA >= (uint32_t)operandB) ? 1 : 0;
-#ifdef DEBUG
-			printf("[EXE] SGEU\n");
-#endif
+			sprintf(s, "[EXE] SGEU\n");
+			print_debug(s);
 			break;
 		default:
 			// Should never goes here
@@ -534,27 +512,27 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 
 	switch (pipeDecode->jmp_eqz_neqz) {
 		case jump:
-#ifdef DEBUG
-			printf("[EXE] JUMP\n");
-#endif
+			sprintf(s, "[EXE] JUMP\n");
+			print_debug(s);
+			
 			toJump = true;
 			break;
 		case jump_link:
-#ifdef DEBUG
-			printf("[EXE] JUMP and LINK\n");
-#endif
+			sprintf(s, "[EXE] JUMP and LINK\n");
+			print_debug(s);
+			
 			toJump = true;
 			break;
 		case eqz:
-#ifdef DEBUG
-			printf("[EXE] BEQZ\n");
-#endif
+			sprintf(s, "[EXE] BEQZ\n");
+			print_debug(s);
+			
 			toJump = (pipeDecode->rs1_val == 0x0);
 			break;
 		case neqz:
-#ifdef DEBUG
-			printf("[EXE] BNEZ\n");
-#endif
+			sprintf(s, "[EXE] BNEZ\n");
+			print_debug(s);
+			
 			toJump = (pipeDecode->rs1_val != 0x0);
 			break;
 		default:
@@ -612,6 +590,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	pipeMem_t *pipeMem;
 
 	uint32_t DRAM_out=0;
+	char s[64];
 
 	pipeMem = (pipeMem_t*)malloc(sizeof(pipeMem_t));
 	if(pipeMem == NULL) {
@@ -625,14 +604,12 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	
 	if(pipeEx->readMem) {
 		DRAM_out = cpu->DRAM[DRAM_addr];
-#ifdef DEBUG
-		printf("[MEM] Reading from memory\n");
-#endif
+		sprintf(s, "[MEM] Reading from memory\n");
+		print_debug(s);
 	}else if(pipeEx->writeMem) {
 		cpu->DRAM[DRAM_addr] = DRAM_data;
-#ifdef DEBUG
-		printf("[MEM] Writing to memory\n");
-#endif
+		sprintf(s, "[MEM] Writing to memory\n");
+		print_debug(s);
 	}
 	pipeMem->DRAM_out = DRAM_out;
 
@@ -641,13 +618,11 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	if(pipeEx->jump){
 		//  If jump == true then ALU_out will hold the new PC
 		pipeMem->nextPC = pipeEx->ALU_out/4;
-#ifdef DEBUG
-		printf("[MEM] JUMPING at 0x%08x\n", pipeMem->nextPC*4);
-#endif
+		sprintf(s, "[MEM] JUMPING at 0x%08x\n", pipeMem->nextPC*4);
+		print_debug(s);
 	}else {
-#ifdef DEBUG
-		printf("[MEM] Incrementing PC\n");
-#endif
+		sprintf(s, "[MEM] Incrementing PC\n");
+		print_debug(s);
 	}
 	// New signals to feed the next steps
 	pipeMem->DRAM_out	= DRAM_out;
@@ -697,6 +672,7 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 
 	cpu_t *cpu = (cpu_t*)handle;
 	uint32_t val_to_store;
+	char s[64];
 #ifdef DELAYSLOT3
 	if(pipeMem->useRegisterToJump)
 		cpu->pc = pipeMem->rs1_val/4;
@@ -709,26 +685,23 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 		if(pipeMem->jump) {
 			// JAL instruction -- rd set to 31
 			val_to_store = pipeMem->nextPC;
-#ifdef DEBUG
-			printf("[WB] Storing next PC: 0x%08x\n", val_to_store);
-#endif
+			sprintf(s, "[WB] Storing next PC: 0x%08x\n", val_to_store);
+			print_debug(s);
 		}else if(pipeMem->readMem) {
 			// LOAD instruction
 			val_to_store = pipeMem->DRAM_out;
-#ifdef DEBUG
-			printf("[WB] Saving to R31 due to link\n");
-			printf("[WB] Storing DRAM_out\n");
-#endif
+			sprintf(s, "[WB] Saving to R31 due to link\n");
+			print_debug(s);
+			sprintf(s, "[WB] Storing DRAM_out\n");
+			print_debug(s);
 		}else {
 			val_to_store = pipeMem->ALU_out;
-#ifdef DEBUG
-			printf("[WB] Storing ALU_out\n");
-#endif
+			sprintf(s, "[WB] Storing ALU_out\n");
+			print_debug(s);
 		}
 		cpu->regs[pipeMem->rd] = val_to_store;	
-#ifdef DEBUG
-		printf("[WB] Storing to R%-2d\n", pipeMem->rd);
-#endif
+		sprintf(s, "[WB] Storing to R%-2d\n", pipeMem->rd);
+		print_debug(s);
 	}
 
 	if(strlen(pipeMem->instr_str) == 0)
