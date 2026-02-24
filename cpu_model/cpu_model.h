@@ -202,6 +202,12 @@ uint32_t cpu_get_pc(void *handle);
 // Get Memory Access
 memoryAccess_t cpu_get_mem_access(void *handle);
 
+// Get addr Memory Access
+uint32_t cpu_get_mem_access_addr(void *handle);
+
+// Get data Memory Access
+uint32_t cpu_get_mem_access_data(void *handle);
+
 // Get a data from the memory
 uint32_t cpu_get_mem_data(void *handle, int addr);	
 

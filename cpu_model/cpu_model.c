@@ -850,6 +850,26 @@ memoryAccess_t cpu_get_mem_access(void *handle){
 	return mem;
 }
 
+// Get addr Memory Access
+uint32_t cpu_get_mem_access_addr(void *handle){
+	cpu_t *cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
+		return 0;
+	}
+	return cpu_get_mem_access(cpu).DRAM_addr;
+}
+
+// Get data Memory Access
+uint32_t cpu_get_mem_access_data(void *handle){
+	cpu_t *cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
+		return 0;
+	}
+	return cpu_get_mem_access(cpu).DRAM_data;
+}
+
 // Get a data from the memory
 uint32_t cpu_get_mem_data(void *handle, int addr){	
 	cpu_t *cpu = (cpu_t*)handle;
