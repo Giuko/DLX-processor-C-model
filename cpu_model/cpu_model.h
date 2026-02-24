@@ -202,6 +202,9 @@ uint32_t cpu_get_pc(void *handle);
 // Get Memory Access
 memoryAccess_t cpu_get_mem_access(void *handle);
 
+// Get a data from the memory
+uint32_t cpu_get_mem_data(void *handle, int addr);	
+
 // Destroy instance
 void memory_destroy(void *handle);
 

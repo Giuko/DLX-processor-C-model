@@ -88,7 +88,7 @@ make gdb relative_jump=yes
 
 ## Notes
 
-- All test files must be placed inside the `test_program` directory.
+- All test files must be placed inside the `programs` directory.
 - `ROWS=-1` ensures the entire program executes.
 - Debug mode (`to_debug=yes`) provides additional internal execution details.
 - The `delayslot` parameter allows you to simulate different CPU architectural behaviors.

@@ -58,7 +58,7 @@ compile_test: all
 
 clean:
 	find . -type f \( -name "*.o" -o -name "*.out" \) -delete
-	rm -r test_program/*.mem
+	rm -r programs/*.mem
 
 #
 # GDB
