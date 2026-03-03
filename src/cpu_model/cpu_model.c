@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Control Unit Emulation
 controlWord_t control_unit(uint32_t instr){
 	controlWord_t cw;
 	uint32_t opcode;
@@ -374,7 +375,7 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	memset(pipeEx, 0, sizeof(pipeEx_t));
 
 
-	if(pipeDecode->controlWord.jmp_eqz_neqz != nop){		// TODO: check mux_a_sel what it is
+	if(pipeDecode->controlWord.jmp_eqz_neqz != nop){
 #ifdef RELATIVE_JUMP
 		operandA = pipeDecode->nextPC;		// We're using pc as multiply of 4 inside the datapath
 		sprintf(s, "[EXE] Using next PC as operand A: 0x%08x\n", operandA);
@@ -655,6 +656,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	return pipeMem;
 }
 
+// WB stage
 void instruction_WB(void *handle, pipeMem_t *pipeMem){
 	if(handle == NULL){
 		fprintf(stderr, "[WB] Failed to access CPU\n");
