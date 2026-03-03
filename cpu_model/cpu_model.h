@@ -69,20 +69,17 @@ typedef enum {
 	neqz
 } jump_t;
 
-typedef struct {
-	uint32_t DRAM_addr;
-	uint32_t DRAM_data;
-} memoryAccess_t;
-
 // CPU State
+#define REGS_NUM 32
+#define DRAM_DEPTH 1024
+#define IRAM_DEPTH 1024
 typedef struct {
+	uint8_t iteration;
+
     uint32_t pc;
-    uint32_t regs[32];
-    uint32_t DRAM[1024];
-    uint32_t IRAM[1024];
-	
-	// It will hold the last memAccess 
-	memoryAccess_t memAccess;
+    uint32_t regs[REGS_NUM];
+    uint32_t DRAM[DRAM_DEPTH];
+    uint32_t IRAM[IRAM_DEPTH];
 } cpu_t;
 
 typedef struct{
@@ -171,7 +168,7 @@ void* cpu_create();
 void cpu_reset(void *handle); 
 
 // Load instruction into memory
-void cpu_load_instr(void *handle, int addr, uint32_t instr);
+void cpu_load_instr(void *handle, uint32_t addr, uint32_t instr);
 
 // Fetch instruction
 pipeFetch_t *instruction_fetch(void *handle);
@@ -196,25 +193,27 @@ void cpu_step(void *handle);
 // Get register value
 uint32_t cpu_get_reg(void *handle, int idx);
 
+// Write register value
+void cpu_write_reg(void* handle, int idx, uint32_t data);
+
 // Get PC
 uint32_t cpu_get_pc(void *handle);
 
-// Get Memory Access
-memoryAccess_t cpu_get_mem_access(void *handle);
-
-// Get addr Memory Access
-uint32_t cpu_get_mem_access_addr(void *handle);
-
-// Get data Memory Access
-uint32_t cpu_get_mem_access_data(void *handle);
-
 // Get a data from the memory
-uint32_t cpu_get_mem_data(void *handle, int addr);	
+uint32_t cpu_get_mem_data(void *handle, uint32_t addr);	
+
+// Write data to memory
+void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data);
+
+// Get a IRAM content 
+uint32_t cpu_get_instr(void *handle, uint32_t addr);
 
 // Destroy instance
 void memory_destroy(void *handle);
 
 // Return the string of the instruction
 char *identify_instruction(uint32_t instr);
+
+void print_debug(char *s);
 
 #endif //CPU_MODEL_H

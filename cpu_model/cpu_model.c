@@ -5,61 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-uint8_t g_iteration = 0; 	
-
-// Print only if DEBUG is defined
-void print_debug(char *s){
-#ifdef DEBUG
-	printf(s);
-#endif
-	return;
-}
-
-// Create CPU instance
-void* cpu_create() {
-
-#ifndef DELAYSLOT3
-#ifndef DELAYSLOT2
-#ifndef DELAYSLOT1
-	fprintf(stderr, "[CRITICAL ERROR] DELAYSLOT not defined correctly\n");
-	exit(-1);
-#endif
-#endif
-#endif
-	cpu_t* cpu = (cpu_t*)malloc(sizeof(cpu_t));
-    int i;
-	memset(cpu, 0, sizeof(cpu_t));
-
-	for(i = 0; i < 1024; i++)
-		cpu->IRAM[i] = NOP_Instruction;
-	for(i = 0; i < 1024; i++)
-		cpu->DRAM[i] = 0x0;
-    return (void*)cpu;
-}
-
-// Reset CPU
-void cpu_reset(void* handle) {
-	int i;
-    cpu_t* cpu = (cpu_t*)handle;
-    g_iteration = 0;
-	cpu->pc = -1;
-	cpu->memAccess.DRAM_addr = 0;
-	cpu->memAccess.DRAM_data = 0;
-	for(i = 0; i < 1024; i++)
-		cpu->DRAM[i] = 0x0;
-    memset(cpu->regs, 0, sizeof(cpu->regs));
-}
-
-// Load instruction into memory
-void cpu_load_instr(void* handle, int addr, uint32_t instr) {
-    cpu_t* cpu = (cpu_t*)handle;
-	if(instr == 0x0)
-		cpu->IRAM[addr] = NOP_Instruction;
-	else
-    	cpu->IRAM[addr] = instr;				// Or addr/4
-}
-
-
 controlWord_t control_unit(uint32_t instr){
 	controlWord_t cw;
 	uint32_t opcode;
@@ -206,6 +151,13 @@ controlWord_t control_unit(uint32_t instr){
 			default:
 				// Should never goes here
 				fprintf(stderr, "[CONTROL] I-Type - shouldn't be here\n");
+				cw.ALU_opcode   		= FUNC_NOP;
+				cw.jmp_eqz_neqz 		= nop;
+				cw.writeRF 				= false;
+				cw.writeMem	 			= false;
+				cw.readMem		 		= false;
+				cw.useImm		 		= false;
+				cw.useRegisterToJump 	= false;
 				break;
 		}	
 	}
@@ -231,7 +183,7 @@ pipeFetch_t *instruction_fetch(void *handle) {
 		fprintf(stderr, "Failed to allocate memory for pipeFetch\n");
 		return NULL;
 	}
-	pipeFetch->instr = cpu->IRAM[cpu->pc];
+	pipeFetch->instr = cpu_get_instr(cpu,cpu_get_pc(cpu));
 	
 	sprintf(s, "[FETCH] Instr: %#010x\n", pipeFetch->instr);
 	print_debug(s);
@@ -301,12 +253,12 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		if(rs1 == 0)
 			rs1_val = 0;
 		else
-			rs1_val = cpu->regs[rs1];
+			rs1_val = cpu_get_reg(cpu, rs1);
 		
 		if(rs2 == 0)
 			rs2_val = 0;
 		else
-			rs2_val = cpu->regs[rs2];
+			rs2_val = cpu_get_reg(cpu, rs2);
 
 		sprintf(s, "[DECODE]: RTYPE | rs1: R%-2d [%d] | rs2: R%-2d [%d] | r: R%-2d | func: %#06x\n", rs1, rs1_val, rs2, rs2_val, rd, func);
 		print_debug(s);
@@ -321,7 +273,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 			imm |= 0xFC000000;
 		if(opcode == OPCODE_JR || opcode == OPCODE_JALR) {
 			rs1 = (instr >> (32-11)) & 0x1F;
-			rs1_val = cpu->regs[rs1];
+			rs1_val = cpu_get_reg(cpu, rs1);
 		}
 			
 		sprintf(s, "[DECODE]: JTYPE | imm: %#010x\n", imm);
@@ -357,13 +309,13 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 			imm |= 0xFFFF0000;
 		
 		// Acces RF to read the registers
-		rs1_val = cpu->regs[rs1];
+		rs1_val = cpu_get_reg(cpu, rs1);
 		
 		sprintf(s, "[DECODE]: ITYPE | rs1: R%-2d [%d] | r: R%-2d | imm: %#010x\n", rs1, rs1_val, rd, imm);
 		print_debug(s);
 
 		if(opcode == OPCODE_SW)
-				rs2_val = cpu->regs[rd];		// In case of a store, mem[rs1_val + offset] = rs2_val (R[rd]) 
+				rs2_val = cpu_get_reg(cpu, rd);		// In case of a store, mem[rs1_val + offset] = rs2_val (R[rd]) 
 			
 	}
 
@@ -651,26 +603,17 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	uint32_t DRAM_data = pipeEx->rs2_val;
 	
 	if(pipeEx->controlWord.readMem) {
-		DRAM_out = cpu->DRAM[DRAM_addr];
-		
-		cpu->memAccess.DRAM_addr = DRAM_addr;
-		cpu->memAccess.DRAM_data = 0;
-
+		DRAM_out = cpu_get_mem_data(cpu, DRAM_addr);
 		sprintf(s, "[MEM] Reading from memory\n");
 		print_debug(s);
 	}else if(pipeEx->controlWord.writeMem) {
-		cpu->DRAM[DRAM_addr] = DRAM_data;
-
-		cpu->memAccess.DRAM_addr = DRAM_addr;
-		cpu->memAccess.DRAM_data = DRAM_data;
-		
+		cpu_write_mem_data(cpu, DRAM_addr, DRAM_data);
 		sprintf(s, "[MEM] Writing to memory\n");
 		print_debug(s);
 	}
 	pipeMem->DRAM_out = DRAM_out;
 
 
-	// TODO: check when the PC gets updated after the branch resolution
 	if(pipeEx->jump){
 		//  If jump == true then ALU_out will hold the new PC
 		pipeMem->nextPC = pipeEx->ALU_out/4;
@@ -755,7 +698,7 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 			print_debug(s);
 		}
 		if (pipeMem->rd != 0)
-			cpu->regs[pipeMem->rd] = val_to_store;	
+			cpu_write_reg(cpu, pipeMem->rd, val_to_store);
 		sprintf(s, "[WB] Storing to R%-2d\n", pipeMem->rd);
 		print_debug(s);
 	}
@@ -771,6 +714,10 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 // Execute one step
 void cpu_step(void* handle) {
 	cpu_t* cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		fprintf(stderr, "[CPU STEP] CPU is NULL\n");
+		return;
+	}
 	static pipeFetch_t 	*pipeFetch	= NULL;
 	static pipeDecode_t *pipeDecode	= NULL;
 	static pipeEx_t 	*pipeEx		= NULL;
@@ -779,229 +726,33 @@ void cpu_step(void* handle) {
 	// with the previous pipe
 	// At the end of each function the used pipe will be
 	// destroyed to avoid overuse of memory
-	if(g_iteration > 3)
+	if(cpu->iteration > 3)
 		instruction_WB(handle, pipeMem);
 #ifdef DELAYSLOT3
 	else
 		cpu->pc++; // During normal operation is WB that will update the PC
 #endif
 
-	if(g_iteration > 2)
+	if(cpu->iteration > 2)
 		pipeMem	= instruction_mem(handle, pipeEx);
 #ifdef DELAYSLOT2
 	else
 		cpu->pc++; // During normal operation is WB that will update the PC
 #endif
-	if(g_iteration > 2){
-		memoryAccess_t mem;
-		char s[64];
-		mem = cpu_get_mem_access(cpu);
-		sprintf(s, "DRAM_ADDR: 0x%08x; DRAM_DATA: 0x%08x", mem.DRAM_addr, mem.DRAM_data);
-		print_debug(s);
-	}
-
-	if(g_iteration > 1)
+	if(cpu->iteration > 1)
 		pipeEx = instruction_exe(handle, pipeDecode);
 #ifdef DELAYSLOT1
 	else
 		cpu->pc++; // During normal operation is WB that will update the PC
 #endif
 	
-	if(g_iteration > 0)
+	if(cpu->iteration > 0)
 		pipeDecode= instruction_decode(handle, pipeFetch);
 	
 	pipeFetch	= instruction_fetch(handle);
 	
-	if(g_iteration < 4)
-		g_iteration++;
+	if(cpu->iteration < 4)
+		cpu->iteration++;
 
-}
-
-// Get register value
-uint32_t cpu_get_reg(void* handle, int idx) {
-    cpu_t* cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_reg] CPU is NULL\n");
-		return 0;
-	}
-    return cpu->regs[idx];
-}
-
-// Get PC
-uint32_t cpu_get_pc(void* handle) {
-    cpu_t* cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_pc] CPU is NULL\n");
-		return 0;
-	}
-    return cpu->pc;
-}
-
-// Get Memory Access
-memoryAccess_t cpu_get_mem_access(void *handle){
-	memoryAccess_t mem;
-	cpu_t *cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
-		return mem;
-	}
-	mem = cpu->memAccess;
-
-	return mem;
-}
-
-// Get addr Memory Access
-uint32_t cpu_get_mem_access_addr(void *handle){
-	cpu_t *cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
-		return 0;
-	}
-	return cpu_get_mem_access(cpu).DRAM_addr;
-}
-
-// Get data Memory Access
-uint32_t cpu_get_mem_access_data(void *handle){
-	cpu_t *cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
-		return 0;
-	}
-	return cpu_get_mem_access(cpu).DRAM_data;
-}
-
-// Get a data from the memory
-uint32_t cpu_get_mem_data(void *handle, int addr){	
-	cpu_t *cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
-		return 0;
-	}
-
-	return cpu->DRAM[addr];
-}
-
-// Destroy instance
-void memory_destroy(void* handle) {
-    free(handle);
-}
-
-
-
-char *identify_instruction(uint32_t instr){
-	char *instr_str;
-	instr_str = (char*)malloc(64*sizeof(char));
-	if(instr_str == NULL){
-		fprintf(stderr, "malloc() failed");
-		return NULL;
-	}
-	uint8_t opcode = (instr >> (32-6)) & 0x3F;
-	uint8_t rs1, rs2, rd;
-	uint16_t func;
-	char *func_str;
-	uint32_t imm;
-	size_t len;
-
-	switch (opcode){
-		//case OPCODE_RTYPE:	  strcpy(instr_str, "RTYPE "); break;
-		case OPCODE_J:        strcpy(instr_str, "J     "); break;
-		case OPCODE_JAL:      strcpy(instr_str, "JAL   "); break;
-		case OPCODE_BEQZ:     strcpy(instr_str, "BEQZ  "); break;
-		case OPCODE_BNEZ:     strcpy(instr_str, "BNEZ  "); break;
-		case OPCODE_ADDI:     strcpy(instr_str, "ADDI  "); break;
-		case OPCODE_ADDUI:    strcpy(instr_str, "ADDUI "); break;
-		case OPCODE_SUBI:     strcpy(instr_str, "SUBI  "); break;
-		case OPCODE_SUBUI:    strcpy(instr_str, "SUBUI "); break;
-		case OPCODE_ANDI:     strcpy(instr_str, "ANDI  "); break;
-		case OPCODE_ORI:      strcpy(instr_str, "ORI   "); break;
-		case OPCODE_XORI:     strcpy(instr_str, "XORI  "); break;
-		case OPCODE_JR:       strcpy(instr_str, "JR    "); break;
-		case OPCODE_JALR:     strcpy(instr_str, "JALR  "); break;
-		case OPCODE_SLLI:     strcpy(instr_str, "SLLI  "); break;
-		case OPCODE_NOP:      strcpy(instr_str, "NOP   "); break;
-		case OPCODE_SRLI:     strcpy(instr_str, "SRLI  "); break;
-		case OPCODE_SRAI:     strcpy(instr_str, "SRAI  "); break;
-		case OPCODE_SEQI:     strcpy(instr_str, "SEQI  "); break;
-		case OPCODE_SNEI:     strcpy(instr_str, "SNEI  "); break;
-		case OPCODE_SLTI:     strcpy(instr_str, "SLTI  "); break;
-		case OPCODE_SGTI:     strcpy(instr_str, "SGTI  "); break;
-		case OPCODE_SLEI:     strcpy(instr_str, "SLEI  "); break;
-		case OPCODE_SGEI:     strcpy(instr_str, "SGEI  "); break;
-		case OPCODE_LW:       strcpy(instr_str, "LW    "); break;
-		case OPCODE_SW:       strcpy(instr_str, "SW    "); break;
-		case OPCODE_SLTUI:    strcpy(instr_str, "SLTUI "); break;
-		case OPCODE_SGTUI:    strcpy(instr_str, "SGTUI "); break;
-		case OPCODE_SLEUI:    strcpy(instr_str, "SLEUI "); break;
-		case OPCODE_SGEUI:    strcpy(instr_str, "SGEUI "); break;
-
-		default:
-			strcpy(instr_str, "");
-			break;
-	}
-	
-	len = strlen(instr_str);
-
-	if (opcode == OPCODE_RTYPE) {
-		// RTYPE
-		rs1  = (instr >> (32-11)) & 0x1F;
-		rs2  = (instr >> (32-16)) & 0x1F;
-		rd   = (instr >> (32-21)) & 0x1F;
-		func = instr & 0x7FF;
-
-		switch (func){
-			case FUNC_NOP:  func_str = "NOP  "; break;
-			case FUNC_SLL:  func_str = "SLL  "; break;
-			case FUNC_SRL:  func_str = "SRL  "; break;
-			case FUNC_SRA:  func_str = "SRA  "; break;
-			case FUNC_ADD:  func_str = "ADD  "; break;
-			case FUNC_ADDU: func_str = "ADDU "; break;
-			case FUNC_SUB:  func_str = "SUB  "; break;
-			case FUNC_SUBU: func_str = "SUBU "; break;
-			case FUNC_AND:  func_str = "AND  "; break;
-			case FUNC_OR:   func_str = "OR   "; break;
-			case FUNC_XOR:  func_str = "XOR  "; break;
-			case FUNC_SEQ:  func_str = "SEQ  "; break;
-			case FUNC_SNE:  func_str = "SNE  "; break;
-			case FUNC_SLT:  func_str = "SLT  "; break;
-			case FUNC_SGT:  func_str = "SGT  "; break;
-			case FUNC_SLE:  func_str = "SLE  "; break;
-			case FUNC_SGE:  func_str = "SGE  "; break;
-			case FUNC_SLTU: func_str = "SLTU "; break;
-			case FUNC_SGTU: func_str = "SGTU "; break;
-			case FUNC_SLEU: func_str = "SLEU "; break;
-			case FUNC_SGEU: func_str = "SGEU "; break;
-			default:        func_str = "UNKNOWN"; break;
-		}
-
-		//snprintf(instr_str+len, 64-len, " | rs1=%u | rs2=%u | rd=%u | func=%s",rs1, rs2, rd, func_str);
-		snprintf(instr_str+len, 64-len, "%s  R%u, R%u, R%-2u ",func_str, rd, rs1, rs2);
-	} else if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR) { 
-		// JTYPE
-		imm = instr & 0x03FFFFFF;
-		
-		// Sign extension 
-		if(imm >> 25)
-			imm |= 0xFC000000;
-
-		snprintf(instr_str+len, 64-len, " 0x%08x", imm);
-
-	} else if(opcode != OPCODE_NOP) {
-		// ITYPE
-		rs1  = (instr >> (32-11)) & 0x1F;
-		rd   = (instr >> (32-16)) & 0x1F;
-		imm  = (instr & 0xFFFF); 
-		// Sign extension
-		if(imm >> 15)
-			imm |= 0xFFFF0000;
-
-		//snprintf(instr_str+len, 64-len, " rs1=%u | rd=%u | imm=0x%08x",rs1, rd, imm);
-		if (opcode == OPCODE_BEQZ || opcode == OPCODE_BNEZ)
-			snprintf(instr_str+len, 64-len, " R%u, 0x%08x", rs1, imm);
-		else
-			snprintf(instr_str+len, 64-len, " R%u, R%u, 0x%08x", rd, rs1, imm);
-	}
-
-
-	return instr_str;
 }
 

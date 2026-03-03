@@ -27,8 +27,9 @@ int basic_test(void *handle){
 		exit(1);
 	}
 
-    while (fscanf(fd, "%x", &temp) == 1)
+    while (fscanf(fd, "%x", &temp) == 1){
         program_size++;
+	}
 	printf("Program size: %d\n", program_size);
     rewind(fd);
 
@@ -40,11 +41,12 @@ int basic_test(void *handle){
 	
 	// Load program into the IRAM
     cpu_reset(cpu);
-    for (i = 0; i < 1024; i++)
+    for (i = 0; i < 1024; i++){
         cpu_load_instr(cpu, i, NOP_Instruction);
-    for (i = 0; i < program_size; i++)
+	}
+	for (i = 0; i < (int)program_size; i++){
         cpu_load_instr(cpu, i, program[i]);
-
+	}
 	// Executing each instruction
 	i = 0;
 	printf("#### STEP %-3d ####\n", ++i);
@@ -109,18 +111,12 @@ int basic_test(void *handle){
 	return 0;
 }
 
-int main(int argc, char *argv[]){
-	FILE *fd			= NULL;
-	int program_size 	= 0;
-	uint32_t temp		= 0;
-	uint32_t *program	= NULL;
-	int i				= 0;
+int main(){
 	cpu_t *cpu			= NULL;
 
     cpu = (cpu_t *)cpu_create();
     if (cpu == NULL) {
         fprintf(stderr, "cpu_create() failed\n");
-        free(program);
         exit(-3);
     }
     cpu_reset(cpu);
