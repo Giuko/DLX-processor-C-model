@@ -172,7 +172,7 @@ controlWord_t control_unit(uint32_t instr){
 // Returns instr and nextPc
 pipeFetch_t *instruction_fetch(void *handle) {
 	if(handle == NULL){
-		fprintf(stderr, "Failed to access CPU\n");
+		fprintf(stderr, "[FETCH] Failed to access CPU\n");
 		return NULL;
 	}
 	cpu_t *cpu = (cpu_t*) handle;
@@ -180,7 +180,7 @@ pipeFetch_t *instruction_fetch(void *handle) {
 	pipeFetch_t *pipeFetch;
 	pipeFetch = (pipeFetch_t*)malloc(sizeof(pipeFetch_t));
 	if(pipeFetch == NULL){
-		fprintf(stderr, "Failed to allocate memory for pipeFetch\n");
+		fprintf(stderr, "[FETCH] Failed to allocate memory for pipeFetch\n");
 		return NULL;
 	}
 	pipeFetch->instr = cpu_get_instr(cpu,cpu_get_pc(cpu));
@@ -204,12 +204,12 @@ pipeFetch_t *instruction_fetch(void *handle) {
 // Returns control useful for next pipes too
 pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	if(handle == NULL){
-		fprintf(stderr, "Failed to access CPU\n");
-		memory_destroy(pipeFetch);
+		fprintf(stderr, "[DECODE] Failed to access CPU\n");
+		free(pipeFetch);
 		return NULL;
 	}
 	if (pipeFetch == NULL) {
-		fprintf(stderr, "Failed to access pipeFetch or not reached yet\n");
+		fprintf(stderr, "[DECODE] Failed to access pipeFetch or not reached yet\n");
 		return NULL;
 	}
 	char s[128];
@@ -295,7 +295,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 				// If not a branch/jump instr
 				// Should never goes here
 				fprintf(stderr, "[Decode] J-Type - shouldn't be here\n");
-				memory_destroy(pipeFetch);	// Free used mem
+				free(pipeFetch);	// Free used mem
 				return NULL;
 				break;
 		}
@@ -334,7 +334,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	strcpy(pipeDecode->instr_str, pipeFetch->instr_str);
 	printf("[DECODE] %s\n", pipeDecode->instr_str);
 	// Previous pipe is now useless
-	memory_destroy(pipeFetch);
+	free(pipeFetch);
 	
 
 	return pipeDecode;
@@ -345,14 +345,12 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	cpu_t *cpu = (cpu_t*)handle;
 	char s[64];
 	if(cpu == NULL){
-		fprintf(stderr, "Failed to access CPU\n");
-		memory_destroy(pipeDecode);
-		printf("[EXE] Failed to access CPU\n");
+		fprintf(stderr, "[EXE] Failed to access CPU\n");
+		free(pipeDecode);
 		return NULL;
 	}
 	if (pipeDecode == NULL) {
-		fprintf(stderr, "Failed to access pipeDecode or not reached yet\n");
-		printf("[EXE] Failed to access pipeDecode or not reached yet\n");
+		fprintf(stderr, "[EXE]Failed to access pipeDecode or not reached yet\n");
 		return NULL;
 	}
 	pipeEx_t *pipeEx;
@@ -509,7 +507,7 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 			// Should never goes here
 			fprintf(stderr, "[EXE] shouldn't be here | ALU_opcode = %x\n", ALU_opcode);
 			printf("[EXE] shouldn't be here | ALU_opcode = %x\n", ALU_opcode);
-			memory_destroy(pipeDecode);	// Free used mem
+			free(pipeDecode);	// Free used mem
 			return NULL;
 	}		
 
@@ -569,24 +567,21 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 		printf("[EXE] %s\n", pipeEx->instr_str);
 
 	// Previous pipe is now useless
-	memory_destroy(pipeDecode);
+	free(pipeDecode);
 	
 	return pipeEx;
 }
 
-
 // Mem stage
 pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	if(handle == NULL){
-		fprintf(stderr, "Failed to access CPU\n");
-		printf("[MEM] Failed to access CPU\n");
-		memory_destroy(pipeEx);
+		fprintf(stderr, "[MEM] Failed to access CPU\n");
+		free(pipeEx);
 		return NULL;
 	}
 	cpu_t *cpu = (cpu_t*)handle;
 	if(pipeEx == NULL){
-		fprintf(stderr, "Failed to access pipeEx or not reached yet\n");
-		printf("[MEM] Failed to access pipeEx or not reached yet\n");
+		fprintf(stderr, "[MEM] Failed to access pipeEx or not reached yet\n");
 		return NULL;
 	}
 	pipeMem_t *pipeMem;
@@ -646,7 +641,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 		printf("[MEM] %s\n", pipeMem->instr_str);
 	
 	// Previous pipe is now useless
-	memory_destroy(pipeEx);
+	free(pipeEx);
 
 
 #ifdef DELAYSLOT2
@@ -662,12 +657,12 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 
 void instruction_WB(void *handle, pipeMem_t *pipeMem){
 	if(handle == NULL){
-		fprintf(stderr, "Failed to access CPU\n");
-		memory_destroy(pipeMem);
+		fprintf(stderr, "[WB] Failed to access CPU\n");
+		free(pipeMem);
 		return;
 	}
 	if(pipeMem == NULL){
-		fprintf(stderr, "Failed to access pipeMem or not reached yet\n");
+		fprintf(stderr, "[WB] Failed to access pipeMem or not reached yet\n");
 		return;
 	}
 
@@ -711,7 +706,7 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 	else
 		printf("[WB] %s\n", pipeMem->instr_str);
 	// Previous pipe is now useless
-	memory_destroy(pipeMem);
+	free(pipeMem);
 }
 
 // Execute one step
@@ -721,40 +716,35 @@ void cpu_step(void* handle) {
 		fprintf(stderr, "[CPU STEP] CPU is NULL\n");
 		return;
 	}
-	static pipeFetch_t 	*pipeFetch	= NULL;
-	static pipeDecode_t *pipeDecode	= NULL;
-	static pipeEx_t 	*pipeEx		= NULL;
-	static pipeMem_t	*pipeMem	= NULL;
+
+
+#ifdef DELAYSLOT
+	printf("DELAYSLOT: %d\n", DELAYSLOT);
+	if(cpu->iteration > DELAYSLOT)
+		cpu->pc = cpu->pc;
+	else
+		cpu->pc++;
+#endif //DELAYSLOT
 	// In reverse, in this way it will be feed
 	// with the previous pipe
 	// At the end of each function the used pipe will be
 	// destroyed to avoid overuse of memory
 	if(cpu->iteration > 3)
-		instruction_WB(handle, pipeMem);
-#ifdef DELAYSLOT3
-	else
-		cpu->pc++; // During normal operation is WB that will update the PC
-#endif
+		instruction_WB(handle, cpu->pipeMem);
 
 	if(cpu->iteration > 2)
-		pipeMem	= instruction_mem(handle, pipeEx);
-#ifdef DELAYSLOT2
-	else
-		cpu->pc++; // During normal operation is WB that will update the PC
-#endif
+		cpu->pipeMem	= instruction_mem(handle, cpu->pipeEx);
+
 	if(cpu->iteration > 1)
-		pipeEx = instruction_exe(handle, pipeDecode);
-#ifdef DELAYSLOT1
-	else
-		cpu->pc++; // During normal operation is WB that will update the PC
-#endif
+		cpu->pipeEx = instruction_exe(handle, cpu->pipeDecode);
 	
 	if(cpu->iteration > 0)
-		pipeDecode= instruction_decode(handle, pipeFetch);
+		cpu->pipeDecode= instruction_decode(handle, cpu->pipeFetch);
 	
-	pipeFetch	= instruction_fetch(handle);
-	
-	if(cpu->iteration < 4)
+	cpu->pipeFetch	= instruction_fetch(handle);
+
+
+	if(cpu->iteration < 5)
 		cpu->iteration++;
 
 }

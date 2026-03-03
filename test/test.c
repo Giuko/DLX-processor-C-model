@@ -127,6 +127,6 @@ int main(){
 	printf("All test passed\n");
 
 
-	memory_destroy(cpu);
+	free(cpu);
 	return 0;
 }

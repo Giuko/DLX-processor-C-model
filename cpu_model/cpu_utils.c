@@ -56,7 +56,18 @@ void cpu_reset(void* handle) {
 	for(i = 0; i < DRAM_DEPTH; i++){
 		cpu->DRAM[i] = 0x0;
 	}
-    memset(cpu->regs, 0, sizeof(cpu->regs));
+    
+	free(cpu->pipeFetch);
+	free(cpu->pipeDecode);
+	free(cpu->pipeEx);
+	free(cpu->pipeMem);
+
+	cpu->pipeFetch	= NULL;
+	cpu->pipeDecode	= NULL;
+	cpu->pipeEx		= NULL;
+	cpu->pipeMem	= NULL;
+
+	memset(cpu->regs, 0, sizeof(cpu->regs));
 }
 
 // Load instruction into memory
@@ -142,11 +153,6 @@ void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data){
 	}
 
 	cpu->DRAM[addr] = data;
-}
-
-// Destroy instance
-void memory_destroy(void *handle) {
-    free(handle);
 }
 
 uint32_t cpu_get_instr(void *handle, uint32_t addr){

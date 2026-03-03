@@ -79,6 +79,6 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	free(program);
-	memory_destroy(cpu);
+	free(cpu);
 	return 0;
 }

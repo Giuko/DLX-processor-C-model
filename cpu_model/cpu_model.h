@@ -61,6 +61,18 @@
 #define OPCODE_SLEUI    0x3C
 #define OPCODE_SGEUI    0x3D
 
+#ifdef DELAYSLOT3
+#define DELAYSLOT 3
+#endif
+
+#ifdef DELAYSLOT2
+#define DELAYSLOT 2
+#endif
+
+#ifdef DELAYSLOT1
+#define DELAYSLOT 1
+#endif
+
 typedef enum {
 	nop,
 	jump,
@@ -68,19 +80,6 @@ typedef enum {
 	eqz,
 	neqz
 } jump_t;
-
-// CPU State
-#define REGS_NUM 32
-#define DRAM_DEPTH 1024
-#define IRAM_DEPTH 1024
-typedef struct {
-	uint8_t iteration;
-
-    uint32_t pc;
-    uint32_t regs[REGS_NUM];
-    uint32_t DRAM[DRAM_DEPTH];
-    uint32_t IRAM[IRAM_DEPTH];
-} cpu_t;
 
 typedef struct{
 	uint16_t 	ALU_opcode;
@@ -161,21 +160,35 @@ typedef struct{
 
 } pipeMem_t;
 
-// Create CPU instance
-void* cpu_create();
+// CPU State
+#define REGS_NUM 32
+#define DRAM_DEPTH 1024
+#define IRAM_DEPTH 1024
+typedef struct {
+	uint8_t iteration;
 
-// Reset CPU
-void cpu_reset(void *handle); 
+    uint32_t pc;
+    uint32_t regs[REGS_NUM];
+    uint32_t DRAM[DRAM_DEPTH];
+    uint32_t IRAM[IRAM_DEPTH];
 
-// Load instruction into memory
-void cpu_load_instr(void *handle, uint32_t addr, uint32_t instr);
+	// Pipeline
+	pipeFetch_t  *pipeFetch;		// IF-ID registers
+	pipeDecode_t *pipeDecode; 	// ID-EX registers
+	pipeEx_t	 *pipeEx;		// EX-ME registers
+	pipeMem_t	 *pipeMem;		// ME-WB registers
+} cpu_t;
+
+
+
+////////////////////////////////////
+// PIPELINE
+////////////////////////////////////
 
 // Fetch instruction
 pipeFetch_t *instruction_fetch(void *handle);
 
 // Decode instruction
-// Will works as control unit too
-// Returns control useful for next pipes too
 pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch); 
 
 // Ex stage
@@ -187,33 +200,53 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx);
 // WriteBack stage
 void instruction_WB(void *handle, pipeMem_t *pipeMem);
 
+
+
+////////////////////////////////////
+// CPU management
+////////////////////////////////////
 // Execute one step
 void cpu_step(void *handle);
+
+// Create CPU instance
+void* cpu_create();
+
+// Reset CPU
+void cpu_reset(void *handle); 
+
+// Load instruction into memory
+void cpu_load_instr(void *handle, uint32_t addr, uint32_t instr);
+
+////////////////////////////////////
+// GETTER
+////////////////////////////////////
+// Get PC
+uint32_t cpu_get_pc(void *handle);
 
 // Get register value
 uint32_t cpu_get_reg(void *handle, int idx);
 
-// Write register value
-void cpu_write_reg(void* handle, int idx, uint32_t data);
-
-// Get PC
-uint32_t cpu_get_pc(void *handle);
-
 // Get a data from the memory
 uint32_t cpu_get_mem_data(void *handle, uint32_t addr);	
-
-// Write data to memory
-void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data);
 
 // Get a IRAM content 
 uint32_t cpu_get_instr(void *handle, uint32_t addr);
 
-// Destroy instance
-void memory_destroy(void *handle);
+////////////////////////////////////
+// WRITING
+////////////////////////////////////
+// Write register value
+void cpu_write_reg(void* handle, int idx, uint32_t data);
 
+// Write data to memory
+void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data);
+
+////////////////////////////////////
+// EXTRA 
+////////////////////////////////////
 // Return the string of the instruction
 char *identify_instruction(uint32_t instr);
 
+// Print only when debug flag
 void print_debug(char *s);
-
 #endif //CPU_MODEL_H
