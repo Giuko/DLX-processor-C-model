@@ -36,16 +36,6 @@ make <target> [options] to_debug=yes
 
 ---
 
-## Recommended Way to Run
-
-The preferred method is:
-
-```bash
-make gdb [options]
-```
-
----
-
 ## Available Options
 
 |          Option           |                      Description                      |        Default values        |
@@ -63,25 +53,25 @@ make gdb [options]
 Run the full default program:
 
 ```bash
-make gdb
+make run 
 ```
 
 Run a specific test file with debugging enabled:
 
 ```bash
-make gdb FILENAME=example.asm to_debug=yes
+make run FILENAME=example.asm to_debug=yes
 ```
 
 Run only the first 20 rows with delay slot model 1:
 
 ```bash
-make gdb ROWS=20 delayslot=1
+make run ROWS=20 delayslot=1
 ```
 
 Use relative jump addressing:
 
 ```bash
-make gdb relative_jump=yes
+make run relative_jump=yes
 ```
 
 ---

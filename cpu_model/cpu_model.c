@@ -188,7 +188,10 @@ pipeFetch_t *instruction_fetch(void *handle) {
 	sprintf(s, "[FETCH] Instr: %#010x\n", pipeFetch->instr);
 	print_debug(s);
 
-	strcpy(pipeFetch->instr_str, identify_instruction(pipeFetch->instr));
+	char *temp;
+	temp = identify_instruction(pipeFetch->instr);
+	strcpy(pipeFetch->instr_str, temp);
+	free(temp);
 	pipeFetch->nextPC = (cpu->pc+1)*4;
 	pipeFetch->controlWord = control_unit(pipeFetch->instr);
 
