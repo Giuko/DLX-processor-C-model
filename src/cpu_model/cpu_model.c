@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "cpu_model.h"
+#include <cpu_model/cpu_model.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -359,7 +359,7 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	sprintf(s, "[EXE] ALU_OPCODE: 0x%x\n", pipeDecode->controlWord.ALU_opcode);
 	print_debug(s);
 
-	uint32_t 	ALU_out;
+	uint32_t 	ALU_out=0;
 	bool		toJump = false;
 
 	uint32_t operandA;
@@ -719,10 +719,7 @@ void cpu_step(void* handle) {
 
 
 #ifdef DELAYSLOT
-	printf("DELAYSLOT: %d\n", DELAYSLOT);
-	if(cpu->iteration > DELAYSLOT)
-		cpu->pc = cpu->pc;
-	else
+	if(cpu->iteration <= DELAYSLOT)
 		cpu->pc++;
 #endif //DELAYSLOT
 	// In reverse, in this way it will be feed
@@ -733,19 +730,18 @@ void cpu_step(void* handle) {
 		instruction_WB(handle, cpu->pipeMem);
 
 	if(cpu->iteration > 2)
-		cpu->pipeMem	= instruction_mem(handle, cpu->pipeEx);
+		cpu->pipeMem = instruction_mem(handle, cpu->pipeEx);
 
 	if(cpu->iteration > 1)
 		cpu->pipeEx = instruction_exe(handle, cpu->pipeDecode);
 	
 	if(cpu->iteration > 0)
-		cpu->pipeDecode= instruction_decode(handle, cpu->pipeFetch);
+		cpu->pipeDecode = instruction_decode(handle, cpu->pipeFetch);
 	
-	cpu->pipeFetch	= instruction_fetch(handle);
+	cpu->pipeFetch = instruction_fetch(handle);
 
 
 	if(cpu->iteration < 5)
 		cpu->iteration++;
 
 }
-

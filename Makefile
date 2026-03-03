@@ -1,24 +1,15 @@
-.PHONY: all run datapath beqz clean compile gdb test
+.PHONY: all run datapath beqz clean compile test build_init
 
+#####################
+# Compile options
+#####################
 CC = gcc
 CFLAGS = -Wall -Wextra
 
-CPUMODEL = cpu_model
-TESTPROGRAM = programs
-COMPILER = compiler
-INC = inc
-TEST = test
-
-# The possible ways to run the program is:
-# 	make run [FILENAME=<filename>] [ROWS=<rows>]
-# 	make datapath [ROWS=<rows>]
-# 	make beqz [ROWS=<rows>]
 FILENAME ?= "Datapath_Test.asm"
 TESTFILE1 ?= "testprogram.asm"
 ROWS ?= -1
 
-# To add debug print info:
-# 	make [options] [OPTIONS] [to_debug=yes]
 to_debug ?= no
 relative_jump ?= no
 delayslot ?= 3
@@ -31,68 +22,102 @@ ifeq ($(relative_jump),yes)
     CFLAGS += -DRELATIVE_JUMP
 endif
 
-all: a.out $(COMPILER)/compiler.out $(TEST)/test.out
-	find . -type f \( -name "*.o" \) -delete
+#####################
+# Folders 
+#####################
+# Main folders
+SRC		= src
+INC		= inc
+TEST 	= test
+BUILD	= build
+TESTPROGRAM = programs
+
+CFLAGS += -I$(INC)
+
+# Subfolders
+CPUMODEL 	= cpu_model
+COMPILER 	= compiler
+EXTRA 		= extra
+
+#####################
+# Variables
+#####################
+CPU_OBJS = $(BUILD)/$(CPUMODEL)/cpu_model.o $(BUILD)/$(CPUMODEL)/cpu_utils.o
+
+#####################
+# Execution options
+#####################
+all: build_init $(BUILD)/a.out $(BUILD)/$(COMPILER)/compiler.out $(BUILD)/$(TEST)/test.out
 
 run: all compile
-	./a.out $(TESTPROGRAM)/$(FILENAME).mem $(ROWS)
+	./$(BUILD)/a.out $(TESTPROGRAM)/$(FILENAME).mem $(ROWS)
 
 datapath: all
-	./a.out $(TESTPROGRAM)/Datapath_Test.asm.mem $(ROWS)
+	./$(BUILD)/a.out $(TESTPROGRAM)/Datapath_Test.asm.mem $(ROWS)
 
 beqz: all
-	./a.out $(TESTPROGRAM)/Branch_Test_beqz.asm.mem $(ROWS)
+	./$(BUILD)/a.out $(TESTPROGRAM)/Branch_Test_beqz.asm.mem $(ROWS)
 
 compile: all
-	$(COMPILER)/compiler.out $(TESTPROGRAM)/$(FILENAME)
+	$(BUILD)/$(COMPILER)/compiler.out $(TESTPROGRAM)/$(FILENAME)
 
 test: all compile_test
-	./$(TEST)/test.out
+	./$(BUILD)/$(TEST)/test.out
 
 compile_test: all
-	$(COMPILER)/compiler.out $(TESTPROGRAM)/$(TESTFILE1)
+	$(BUILD)/$(COMPILER)/compiler.out $(TESTPROGRAM)/$(TESTFILE1)
 
 clean:
-	find . -type f \( -name "*.o" -o -name "*.out" \) -delete
-	rm -r programs/*.mem
+	rm -rf $(BUILD)
+	rm -rf $(TESTPROGRAM)/*.mem
 
+build_init:
+	mkdir -p $(BUILD)/$(CPUMODEL)
+	mkdir -p $(BUILD)/$(COMPILER)
+	mkdir -p $(BUILD)/$(EXTRA)
+	mkdir -p $(BUILD)/$(TEST)
+
+#####################
+# Compiling Files
+#####################
 #
 # main
 #
-a.out: main.o $(CPUMODEL)/cpu_model.o $(CPUMODEL)/cpu_utils.o $(INC)/utils.o
-	$(CC) main.o $(CPUMODEL)/cpu_model.o $(CPUMODEL)/cpu_utils.o $(INC)/utils.o -o a.out
+$(BUILD)/a.out: $(BUILD)/main.o $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o
+	$(CC) $(BUILD)/main.o $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o -o $(BUILD)/a.out
 
-main.o: main.c $(CPUMODEL)/cpu_model.h
-	$(CC) $(CFLAGS) -c main.c
-
-$(INC)/utils.o: $(INC)/utils.c $(INC)/utils.h
-	$(CC) $(CFLAGS) -c $(INC)/utils.c -o $(INC)/utils.o
+$(BUILD)/main.o: $(SRC)/main.c $(INC)/$(CPUMODEL)/cpu_model.h
+	$(CC) $(CFLAGS) -c $(SRC)/main.c -o $(BUILD)/main.o
 
 #
 # CPU model
 #
-$(CPUMODEL)/cpu_model.o: $(CPUMODEL)/cpu_model.c  $(CPUMODEL)/cpu_model.h
-	$(CC) $(CFLAGS) -c $(CPUMODEL)/cpu_model.c -o $(CPUMODEL)/cpu_model.o
+$(BUILD)/$(CPUMODEL)/cpu_model.o: $(SRC)/$(CPUMODEL)/cpu_model.c  $(INC)/$(CPUMODEL)/cpu_model.h
+	$(CC) $(CFLAGS) -c $(SRC)/$(CPUMODEL)/cpu_model.c -o $(BUILD)/$(CPUMODEL)/cpu_model.o
 
-$(CPUMODEL)/cpu_utils.o: $(CPUMODEL)/cpu_utils.c $(CPUMODEL)/cpu_model.h
-	$(CC) $(CFLAGS) -c $(CPUMODEL)/cpu_utils.c  -o $(CPUMODEL)/cpu_utils.o
+$(BUILD)/$(CPUMODEL)/cpu_utils.o: $(SRC)/$(CPUMODEL)/cpu_utils.c $(INC)/$(CPUMODEL)/cpu_model.h
+	$(CC) $(CFLAGS) -c $(SRC)/$(CPUMODEL)/cpu_utils.c  -o $(BUILD)/$(CPUMODEL)/cpu_utils.o
 
 #
 # Compiler
 #
-$(COMPILER)/compiler.out: $(COMPILER)/compiler.o $(CPUMODEL)/cpu_model.h
-	$(CC) $(CFLAGS) $(COMPILER)/compiler.o -o $(COMPILER)/compiler.out
+$(BUILD)/$(COMPILER)/compiler.out: $(BUILD)/$(COMPILER)/compiler.o $(INC)/$(CPUMODEL)/cpu_model.h
+	$(CC) $(CFLAGS) $(BUILD)/$(COMPILER)/compiler.o -o $(BUILD)/$(COMPILER)/compiler.out
 
-$(COMPILER)/compiler.o: $(COMPILER)/compiler.c
-	$(CC) $(CFLAGS) -c $(COMPILER)/compiler.c -o $(COMPILER)/compiler.o
+$(BUILD)/$(COMPILER)/compiler.o: $(SRC)/$(COMPILER)/compiler.c
+	$(CC) $(CFLAGS) -c $(SRC)/$(COMPILER)/compiler.c -o $(BUILD)/$(COMPILER)/compiler.o
 
 #
 # Test
 #
-$(TEST)/test.out: $(TEST)/test.o $(CPUMODEL)/cpu_model.o $(CPUMODEL)/cpu_utils.o $(INC)/utils.o
-	$(CC) $(CPUMODEL)/cpu_model.o $(CPUMODEL)/cpu_utils.o $(TEST)/test.o $(INC)/utils.o -o $(TEST)/test.out
+$(BUILD)/$(TEST)/test.out: $(BUILD)/$(TEST)/test.o $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o
+	$(CC) $(CPU_OBJS) $(BUILD)/$(TEST)/test.o $(BUILD)/$(EXTRA)/utils.o -o $(BUILD)/$(TEST)/test.out
 
-$(TEST)/test.o: $(TEST)/test.c $(TEST)/test.h
-	$(CC) $(CFLAGS) -c $(TEST)/test.c -o $(TEST)/test.o
+$(BUILD)/$(TEST)/test.o: $(TEST)/test.c $(INC)/$(TEST)/test.h
+	$(CC) $(CFLAGS) -c $(TEST)/test.c -o $(BUILD)/$(TEST)/test.o
 
-
+#
+# Extra 
+#
+$(BUILD)/$(EXTRA)/utils.o: $(SRC)/$(EXTRA)/utils.c $(INC)/$(EXTRA)/utils.h
+	$(CC) $(CFLAGS) -c $(SRC)/$(EXTRA)/utils.c -o $(BUILD)/$(EXTRA)/utils.o

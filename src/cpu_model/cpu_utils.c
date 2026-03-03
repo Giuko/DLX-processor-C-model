@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "cpu_model.h"
+#include <cpu_model/cpu_model.h>
 #include <stdlib.h>
 #include <string.h>
 

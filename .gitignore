@@ -1,3 +1,6 @@
 *.o
 *.out
 *.mem
+build/
+.cache/
+compile_commands.json

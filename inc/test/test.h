@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../inc/utils.h"
+#include "extra/utils.h"
 
 // The do while is performed in order to maintain if-else oder
 #define ASSERT(condition, msg) \

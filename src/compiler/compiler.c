@@ -1,4 +1,4 @@
-#include "../cpu_model/cpu_model.h"
+#include <cpu_model/cpu_model.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

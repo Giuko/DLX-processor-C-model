@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../test/test.h"
-#include "../cpu_model/cpu_model.h"
-#include "../inc/utils.h"
+#include <test/test.h>
+#include <cpu_model/cpu_model.h>
+#include <extra/utils.h>
 
 // A known program is executed, so the comparison is done, 
 // knowing the expected results
@@ -12,7 +12,7 @@ int basic_test(void *handle){
 	FILE *fd;
 	uint32_t temp;
 	uint32_t *program;
-	uint32_t program_size;
+	uint32_t program_size = 0;
 	uint32_t val;
 	int i;
     if (cpu == NULL) {

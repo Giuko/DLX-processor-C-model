@@ -1,5 +1,5 @@
 #include "cpu_model/cpu_model.h"
-#include "inc/utils.h"
+#include "extra/utils.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
