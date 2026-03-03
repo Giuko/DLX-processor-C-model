@@ -43,13 +43,14 @@ EXTRA 		= extra
 # Variables
 #####################
 CPU_OBJS = $(BUILD)/$(CPUMODEL)/cpu_model.o $(BUILD)/$(CPUMODEL)/cpu_utils.o
+APP_OBJS = $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o										# Minimal objectes for any app 
 
 #####################
 # Execution options
 #####################
-all: build_init $(BUILD)/a.out $(BUILD)/$(COMPILER)/compiler.out $(BUILD)/$(TEST)/test.out
+all: build_init $(BUILD)/a.out $(BUILD)/$(COMPILER)/compiler.out $(BUILD)/$(TEST)/test.out compile
 
-run: all compile
+run: all
 	./$(BUILD)/a.out $(TESTPROGRAM)/$(FILENAME).mem $(ROWS)
 
 datapath: all
@@ -83,8 +84,8 @@ build_init:
 #
 # main
 #
-$(BUILD)/a.out: $(BUILD)/main.o $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o
-	$(CC) $(BUILD)/main.o $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o -o $(BUILD)/a.out
+$(BUILD)/a.out: $(BUILD)/main.o $(APP_OBJS)
+	$(CC) $(BUILD)/main.o $(APP_OBJS) -o $(BUILD)/a.out
 
 $(BUILD)/main.o: $(SRC)/main.c $(INC)/$(CPUMODEL)/cpu_model.h
 	$(CC) $(CFLAGS) -c $(SRC)/main.c -o $(BUILD)/main.o
@@ -110,8 +111,8 @@ $(BUILD)/$(COMPILER)/compiler.o: $(SRC)/$(COMPILER)/compiler.c
 #
 # Test
 #
-$(BUILD)/$(TEST)/test.out: $(BUILD)/$(TEST)/test.o $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o
-	$(CC) $(CPU_OBJS) $(BUILD)/$(TEST)/test.o $(BUILD)/$(EXTRA)/utils.o -o $(BUILD)/$(TEST)/test.out
+$(BUILD)/$(TEST)/test.out: $(BUILD)/$(TEST)/test.o $(APP_OBJS)
+	$(CC) $(APP_OBJS) $(BUILD)/$(TEST)/test.o -o $(BUILD)/$(TEST)/test.out
 
 $(BUILD)/$(TEST)/test.o: $(TEST)/test.c $(INC)/$(TEST)/test.h
 	$(CC) $(CFLAGS) -c $(TEST)/test.c -o $(BUILD)/$(TEST)/test.o
