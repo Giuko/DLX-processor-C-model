@@ -2,17 +2,14 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <cpu_model/cpu_model.h>
+#include <cpu_model/peripherals/memory/memory.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Print only if DEBUG is defined
-void print_debug(char *s){
-#ifdef DEBUG
-	printf(s);
-#endif
-	return;
-}
 
+////////////////////////////////////
+// CPU management
+////////////////////////////////////
 // Create CPU instance
 void* cpu_create() {
 
@@ -29,33 +26,27 @@ void* cpu_create() {
 		fprintf(stderr, "[CPU CREATE] malloc() failed\n");
 		return NULL;
 	}
-    int i;
 	memset(cpu, 0, sizeof(cpu_t));
+	
+	mem_init(&cpu->mem.iram, IRAM_DEPTH, IRAM_BASE_ADDRESS);
+	mem_init(&cpu->mem.dram, DRAM_DEPTH, DRAM_BASE_ADDRESS);
 
-	for(i = 0; i < IRAM_DEPTH; i++){
-		cpu->IRAM[i] = NOP_Instruction;
-	}
-	for(i = 0; i < DRAM_DEPTH; i++){
-		cpu->DRAM[i] = 0x0;
-	}
     return (void*)cpu;
 }
 
 // Reset CPU
 void cpu_reset(void* handle) {
-	int i;
     cpu_t* cpu = (cpu_t*)handle;
     
-	if(cpu == NULL){
+if(cpu == NULL){
 		fprintf(stderr, "[CPU RESET] CPU is NULL\n");
 		return;
 	}
 
 	cpu->iteration = 0;
 	cpu->pc = -1;
-	for(i = 0; i < DRAM_DEPTH; i++){
-		cpu->DRAM[i] = 0x0;
-	}
+	mem_free(&cpu->mem.dram);
+	mem_init(&cpu->mem.dram, DRAM_DEPTH, DRAM_BASE_ADDRESS);
     
 	free(cpu->pipeFetch);
 	free(cpu->pipeDecode);
@@ -78,9 +69,22 @@ void cpu_load_instr(void* handle, uint32_t addr, uint32_t instr) {
 		return;
 	}
 	if(instr == 0x0)
-		cpu->IRAM[addr] = NOP_Instruction;
+		mem_write(&cpu->mem.iram, addr, NOP_Instruction);
 	else
-    	cpu->IRAM[addr] = instr;				// Or addr/4
+		mem_write(&cpu->mem.iram, addr, instr);
+}
+
+////////////////////////////////////
+// GETTER
+////////////////////////////////////
+// Get PC
+uint32_t cpu_get_pc(void* handle) {
+    cpu_t* cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_pc] CPU is NULL\n");
+		return 0;
+	}
+    return cpu->pc;
 }
 
 // Get register value
@@ -97,6 +101,40 @@ uint32_t cpu_get_reg(void* handle, int idx) {
     return cpu->regs[idx];
 }
 
+// Get a data from the memory
+uint32_t cpu_get_mem_data(void *handle, uint32_t addr){	
+	cpu_t *cpu = (cpu_t*)handle;
+	uint32_t value = 0;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
+		return 0;
+	}
+
+	mem_read(&cpu->mem.dram, addr, &value);
+
+	return value;
+}
+
+// Get a IRAM content 
+uint32_t cpu_get_instr(void *handle, uint32_t addr){
+	cpu_t* cpu = (cpu_t*)handle;
+	uint32_t value;
+	if(cpu == NULL){
+		fprintf(stderr, "[cpu_get_pc] CPU is NULL\n");
+		return 0;
+	}
+	if(addr >= IRAM_DEPTH) {
+		fprintf(stderr, "[WARNING] IRAM wrong address: %d\n", addr);
+		return 0;
+	}
+
+	mem_read(&cpu->mem.iram, addr, &value);
+	return value;
+}
+
+////////////////////////////////////
+// WRITING
+////////////////////////////////////
 // Write register value
 void cpu_write_reg(void* handle, int idx, uint32_t data) {
     cpu_t* cpu = (cpu_t*)handle;
@@ -111,34 +149,6 @@ void cpu_write_reg(void* handle, int idx, uint32_t data) {
     cpu->regs[idx] = data;
 }
 
-// Get PC
-uint32_t cpu_get_pc(void* handle) {
-    cpu_t* cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_pc] CPU is NULL\n");
-		return 0;
-	}
-    return cpu->pc;
-}
-
-
-// Get a data from the memory
-uint32_t cpu_get_mem_data(void *handle, uint32_t addr){	
-	cpu_t *cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_mem_access] CPU is NULL\n");
-		return 0;
-	}
-	
-	if(addr >= DRAM_DEPTH){
-		fprintf(stderr, "[WARNING] DRAM wrong address: %d\n", addr);
-		return 0;
-	}
-
-	return cpu->DRAM[addr];
-}
-
-
 // Write data to memory
 void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data){	
 	cpu_t *cpu = (cpu_t*)handle;
@@ -152,22 +162,12 @@ void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data){
 		return;
 	}
 
-	cpu->DRAM[addr] = data;
+	mem_write(&cpu->mem.dram, addr, data);
 }
 
-uint32_t cpu_get_instr(void *handle, uint32_t addr){
-	cpu_t* cpu = (cpu_t*)handle;
-	if(cpu == NULL){
-		fprintf(stderr, "[cpu_get_pc] CPU is NULL\n");
-		return 0;
-	}
-	if(addr >= IRAM_DEPTH) {
-		fprintf(stderr, "[WARNING] IRAM wrong address: %d\n", addr);
-		return 0;
-	}
-	return cpu->IRAM[addr];
-}
-
+////////////////////////////////////
+// EXTRA 
+////////////////////////////////////
 char *identify_instruction(uint32_t instr){
 	char *instr_str;
 	instr_str = (char*)malloc(64*sizeof(char));
@@ -285,3 +285,10 @@ char *identify_instruction(uint32_t instr){
 	return instr_str;
 }
 
+// Print only if DEBUG is defined
+void print_debug(char *s){
+#ifdef DEBUG
+	printf(s);
+#endif
+	return;
+}

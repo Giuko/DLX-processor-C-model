@@ -19,7 +19,9 @@ controlWord_t control_unit(uint32_t instr){
 	cw.readMem		 		= false;
 	cw.useImm		 		= false;
 	cw.useRegisterToJump 	= false;
-	
+
+	if(instr == 0)
+		instr = NOP_Instruction;
 	
 	// Get opcode
 	opcode = (instr >> (32-6)) & 0x3F;

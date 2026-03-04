@@ -41,9 +41,6 @@ int basic_test(void *handle){
 	
 	// Load program into the IRAM
     cpu_reset(cpu);
-    for (i = 0; i < 1024; i++){
-        cpu_load_instr(cpu, i, NOP_Instruction);
-	}
 	for (i = 0; i < (int)program_size; i++){
         cpu_load_instr(cpu, i, program[i]);
 	}

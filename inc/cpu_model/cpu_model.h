@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <cpu_model/peripherals/memory/memory.h>
 
 #define NOP_Instruction 0x54000000
 
@@ -72,6 +73,10 @@
 #ifdef DELAYSLOT1
 #define DELAYSLOT 1
 #endif
+
+#define REGS_NUM 32
+#define DRAM_DEPTH 1024
+#define IRAM_DEPTH 1024
 
 typedef enum {
 	nop,
@@ -161,19 +166,15 @@ typedef struct{
 } pipeMem_t;
 
 // CPU State
-#define REGS_NUM 32
-#define DRAM_DEPTH 1024
-#define IRAM_DEPTH 1024
 typedef struct {
 	uint8_t iteration;
 
     uint32_t pc;
     uint32_t regs[REGS_NUM];
-    uint32_t DRAM[DRAM_DEPTH];
-    uint32_t IRAM[IRAM_DEPTH];
+	mem_system_t mem;			// System memory (IRAM+DRAM)
 
 	// Pipeline
-	pipeFetch_t  *pipeFetch;		// IF-ID registers
+	pipeFetch_t  *pipeFetch;	// IF-ID registers
 	pipeDecode_t *pipeDecode; 	// ID-EX registers
 	pipeEx_t	 *pipeEx;		// EX-ME registers
 	pipeMem_t	 *pipeMem;		// ME-WB registers

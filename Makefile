@@ -1,4 +1,4 @@
-.PHONY: all run datapath beqz clean compile test build_init
+.PHONY: all run datapath beqz clean compile test build_init memory
 
 #####################
 # Compile options
@@ -39,11 +39,20 @@ CPUMODEL 	= cpu_model
 COMPILER 	= compiler
 EXTRA 		= extra
 
+PERIPHERAL = peripherals
+MEMORY = $(CPUMODEL)/$(PERIPHERAL)/memory
+
 #####################
 # Variables
 #####################
-CPU_OBJS = $(BUILD)/$(CPUMODEL)/cpu_model.o $(BUILD)/$(CPUMODEL)/cpu_utils.o
-APP_OBJS = $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o										# Minimal objectes for any app 
+#
+# Peripherals
+#
+MEM_OBJS = $(BUILD)/$(MEMORY)/memory.o														# Memory objs
+
+PER_OBJS = $(MEM_OBJS)																		# All of the peripherals
+CPU_OBJS = $(BUILD)/$(CPUMODEL)/cpu_model.o $(BUILD)/$(CPUMODEL)/cpu_utils.o $(PER_OBJS)	# Everything needed to compile CPU
+APP_OBJS = $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o											# Minimal objectes for any app 
 
 #####################
 # Execution options
@@ -77,6 +86,7 @@ build_init:
 	mkdir -p $(BUILD)/$(COMPILER)
 	mkdir -p $(BUILD)/$(EXTRA)
 	mkdir -p $(BUILD)/$(TEST)
+	mkdir -p $(BUILD)/$(MEMORY)
 
 #####################
 # Compiling Files
@@ -117,8 +127,19 @@ $(BUILD)/$(TEST)/test.out: $(BUILD)/$(TEST)/test.o $(APP_OBJS)
 $(BUILD)/$(TEST)/test.o: $(TEST)/test.c $(INC)/$(TEST)/test.h
 	$(CC) $(CFLAGS) -c $(TEST)/test.c -o $(BUILD)/$(TEST)/test.o
 
-#
+#####################
 # Extra 
-#
+#####################
 $(BUILD)/$(EXTRA)/utils.o: $(SRC)/$(EXTRA)/utils.c $(INC)/$(EXTRA)/utils.h
 	$(CC) $(CFLAGS) -c $(SRC)/$(EXTRA)/utils.c -o $(BUILD)/$(EXTRA)/utils.o
+
+
+#####################
+# Peripherals
+#####################
+
+#
+# Memory
+#
+$(BUILD)/$(MEMORY)/memory.o: $(SRC)/$(MEMORY)/memory.c $(INC)/$(MEMORY)/memory.h
+	$(CC) $(CFLAGS) -c $(SRC)/$(MEMORY)/memory.c -o $(BUILD)/$(MEMORY)/memory.o
