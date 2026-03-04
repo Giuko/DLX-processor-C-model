@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 
-#define IRAM_BASE_ADDRESS 0x00000000
-#define DRAM_BASE_ADDRESS 0x00000000
-
-
 typedef struct {
 	uint32_t *data;
 	uint32_t size;			// In words

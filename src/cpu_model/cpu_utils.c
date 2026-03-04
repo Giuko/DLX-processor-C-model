@@ -1,3 +1,4 @@
+#include "cpu_model/peripherals/bus/bus.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -27,10 +28,8 @@ void* cpu_create() {
 		return NULL;
 	}
 	memset(cpu, 0, sizeof(cpu_t));
-	
-	mem_init(&cpu->mem.iram, IRAM_DEPTH, IRAM_BASE_ADDRESS);
-	mem_init(&cpu->mem.dram, DRAM_DEPTH, DRAM_BASE_ADDRESS);
 
+	bus_init(&cpu->bus);
     return (void*)cpu;
 }
 
@@ -45,9 +44,8 @@ if(cpu == NULL){
 
 	cpu->iteration = 0;
 	cpu->pc = -1;
-	mem_free(&cpu->mem.dram);
-	mem_init(&cpu->mem.dram, DRAM_DEPTH, DRAM_BASE_ADDRESS);
-    
+   	bus_reset(&(cpu->bus));
+
 	free(cpu->pipeFetch);
 	free(cpu->pipeDecode);
 	free(cpu->pipeEx);
@@ -69,9 +67,19 @@ void cpu_load_instr(void* handle, uint32_t addr, uint32_t instr) {
 		return;
 	}
 	if(instr == 0x0)
-		mem_write(&cpu->mem.iram, addr, NOP_Instruction);
+		bus_write(&cpu->bus, addr+IRAM_BASE, NOP_Instruction);
 	else
-		mem_write(&cpu->mem.iram, addr, instr);
+		bus_write(&cpu->bus, addr+IRAM_BASE, instr);
+}
+
+void cpu_free(void *handle){
+	cpu_t* cpu = (cpu_t*)handle;
+	if(cpu == NULL){
+		return;
+	}
+
+	bus_free(&cpu->bus);
+	free(cpu);
 }
 
 ////////////////////////////////////
@@ -110,8 +118,7 @@ uint32_t cpu_get_mem_data(void *handle, uint32_t addr){
 		return 0;
 	}
 
-	mem_read(&cpu->mem.dram, addr, &value);
-
+	bus_read(&cpu->bus, addr+DRAM_BASE, &value);
 	return value;
 }
 
@@ -128,7 +135,7 @@ uint32_t cpu_get_instr(void *handle, uint32_t addr){
 		return 0;
 	}
 
-	mem_read(&cpu->mem.iram, addr, &value);
+	bus_read(&cpu->bus, addr+IRAM_BASE, &value);
 	return value;
 }
 
@@ -162,7 +169,7 @@ void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data){
 		return;
 	}
 
-	mem_write(&cpu->mem.dram, addr, data);
+	bus_write(&cpu->bus, addr+DRAM_BASE, data);
 }
 
 ////////////////////////////////////

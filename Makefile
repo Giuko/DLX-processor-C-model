@@ -1,4 +1,4 @@
-.PHONY: all run datapath beqz clean compile test build_init memory
+.PHONY: all run datapath beqz clean compile test build_init uart
 
 #####################
 # Compile options
@@ -39,8 +39,25 @@ CPUMODEL 	= cpu_model
 COMPILER 	= compiler
 EXTRA 		= extra
 
+#####################
+# Folders Peripherals 
+#####################
 PERIPHERAL = peripherals
+
+#
+# UART
+#
+BUS = $(CPUMODEL)/$(PERIPHERAL)/bus
+
+#
+# Memory
+#
 MEMORY = $(CPUMODEL)/$(PERIPHERAL)/memory
+
+#
+# UART
+#
+UART = $(CPUMODEL)/$(PERIPHERAL)/uart
 
 #####################
 # Variables
@@ -48,9 +65,10 @@ MEMORY = $(CPUMODEL)/$(PERIPHERAL)/memory
 #
 # Peripherals
 #
+BUS_OBJS = $(BUILD)/$(BUS)/bus.o															# Bus objs
 MEM_OBJS = $(BUILD)/$(MEMORY)/memory.o														# Memory objs
 
-PER_OBJS = $(MEM_OBJS)																		# All of the peripherals
+PER_OBJS = $(MEM_OBJS) $(BUS_OBJS)															# All of the peripherals
 CPU_OBJS = $(BUILD)/$(CPUMODEL)/cpu_model.o $(BUILD)/$(CPUMODEL)/cpu_utils.o $(PER_OBJS)	# Everything needed to compile CPU
 APP_OBJS = $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o											# Minimal objectes for any app 
 
@@ -87,6 +105,8 @@ build_init:
 	mkdir -p $(BUILD)/$(EXTRA)
 	mkdir -p $(BUILD)/$(TEST)
 	mkdir -p $(BUILD)/$(MEMORY)
+	mkdir -p $(BUILD)/$(UART)
+	mkdir -p $(BUILD)/$(BUS)
 
 #####################
 # Compiling Files
@@ -139,7 +159,28 @@ $(BUILD)/$(EXTRA)/utils.o: $(SRC)/$(EXTRA)/utils.c $(INC)/$(EXTRA)/utils.h
 #####################
 
 #
+# Bus
+#
+$(BUILD)/$(BUS)/bus.o: $(SRC)/$(BUS)/bus.c $(INC)/$(BUS)/bus.h
+	$(CC) $(CFLAGS) -c $(SRC)/$(BUS)/bus.c -o $(BUILD)/$(BUS)/bus.o
+
+#
 # Memory
 #
 $(BUILD)/$(MEMORY)/memory.o: $(SRC)/$(MEMORY)/memory.c $(INC)/$(MEMORY)/memory.h
 	$(CC) $(CFLAGS) -c $(SRC)/$(MEMORY)/memory.c -o $(BUILD)/$(MEMORY)/memory.o
+
+#
+# UART
+#
+$(BUILD)/$(UART)/uart.o: $(SRC)/$(UART)/uart.c $(INC)/$(UART)/uart.h
+	$(CC) $(CFLAGS) -c $(SRC)/$(UART)/uart.c -o $(BUILD)/$(UART)/uart.o
+
+$(BUILD)/$(UART)/main.o: $(SRC)/$(UART)/main.c $(INC)/$(UART)/uart.h
+	$(CC) $(CFLAGS) -c $(SRC)/$(UART)/main.c -o $(BUILD)/$(UART)/main.o
+
+uart: $(BUILD)/$(UART)/uart.o $(BUILD)/$(UART)/main.o
+	$(CC) $(BUILD)/$(UART)/uart.o $(BUILD)/$(UART)/main.o -o $(BUILD)/$(UART)/main.out
+	./$(BUILD)/$(UART)/main.out
+
+

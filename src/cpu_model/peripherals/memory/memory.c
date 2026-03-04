@@ -23,7 +23,7 @@ int mem_read(memory_t *mem, uint32_t addr, uint32_t *out){
 		return -1;
 	}
 
-	*out = mem->data[addr];
+	*out = mem->data[idx];
 	return 0;
 }
 
@@ -34,7 +34,7 @@ int mem_write(memory_t *mem, uint32_t addr, uint32_t val){
 		return -1;
 	}
 	
-	mem->data[addr] = val;
+	mem->data[idx] = val;
 	return 0;
 }
 
