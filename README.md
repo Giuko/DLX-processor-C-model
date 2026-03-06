@@ -45,6 +45,7 @@ make <target> [options] to_debug=yes
 | `to_debug=<yes/no>`       | Enable extra debug output                             | `no` |
 | `delayslot=<1\|2\|3>`     | Select CPU delay slot model to simulate               | `3` |
 | `relative_jump=<yes/no>`  | Controls jump address calculation:<br>• `yes` → compute as `addr + imm`<br>• `no` → compute as `imm` | `no` |
+| `using_uart1=<yes/no>`    | Enable the usage of a UART output to another terminal, use `nc localhost 5555`  | `no` |
 
 ---
 
@@ -83,3 +84,7 @@ make run relative_jump=yes
 - Debug mode (`to_debug=yes`) provides additional internal execution details.
 - The `delayslot` parameter allows you to simulate different CPU architectural behaviors.
 - The `relative_jump` option affects both the compiler and the CPU hardware model.
+
+## Programming notes
+- DRAM base address : 0x0000 0000
+- UART1 base address: 0x1000 0000

@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define UART_TX_OFFSET		0x0
+#define UART_RX_OFFSET		0x4
+#define UART_STATUS_OFFSET	0x8
+
 typedef struct {
 	int server_fd;	// Listening socket
 	int client_fd;	// Active connection

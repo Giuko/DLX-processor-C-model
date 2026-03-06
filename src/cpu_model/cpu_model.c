@@ -609,7 +609,7 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 		print_debug(s);
 	}else if(pipeEx->controlWord.writeMem) {
 		cpu_write_mem_data(cpu, DRAM_addr, DRAM_data);
-		sprintf(s, "[MEM] Writing to memory\n");
+		sprintf(s, "[MEM] Writing to memory: 0x%08x\n", DRAM_addr);
 		print_debug(s);
 	}
 	pipeMem->DRAM_out = DRAM_out;

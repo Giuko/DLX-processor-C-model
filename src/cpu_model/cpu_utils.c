@@ -164,11 +164,9 @@ void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data){
 		return;
 	}
 	
-	if(addr >= DRAM_DEPTH){
-		fprintf(stderr, "[WARNING] DRAM wrong address: %d\n", addr);
-		return;
-	}
-
+	char s[64];
+	sprintf(s, "[BUS] Writing to the address: 0x%08x\n", addr+DRAM_BASE);
+	print_debug(s);
 	bus_write(&cpu->bus, addr+DRAM_BASE, data);
 }
 

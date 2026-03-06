@@ -171,7 +171,7 @@ typedef struct {
 
     uint32_t pc;
     uint32_t regs[REGS_NUM];
-	bus_t bus;			// System memory (IRAM+DRAM)
+	bus_t bus;
 
 	// Pipeline
 	pipeFetch_t  *pipeFetch;	// IF-ID registers

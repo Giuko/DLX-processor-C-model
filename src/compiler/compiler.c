@@ -132,7 +132,9 @@ int parse_register(const char *token) {
 }
 
 int parse_imm(const char *token) {
-	return (int)strtol(token+1, NULL, 0); // handles decimal and hex (0x)
+	if(token[0] == '#')
+		token++;
+	return (int)strtol(token, NULL, 0); // handles decimal and hex (0x)
 }
 
 int find_label_address(const char *name) {

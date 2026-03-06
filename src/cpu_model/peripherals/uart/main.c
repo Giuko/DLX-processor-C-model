@@ -1,5 +1,4 @@
 #include <cpu_model/peripherals/uart/uart.h>
-
 #include <stdio.h>
 
 int main() {
@@ -13,9 +12,5 @@ int main() {
 	}
 
 	uart_free(&uart);
-
-
-	printf("Qualcosa\n");
-
 	return 0;
 }

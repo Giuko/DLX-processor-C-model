@@ -1,3 +1,4 @@
+#include "cpu_model/cpu_model.h"
 #include <cpu_model/peripherals/uart/uart.h>
 
 #include <stdlib.h>
@@ -12,7 +13,7 @@ void uart_init(uart_t *uart, uint16_t port){
 	uart->client_fd = -1;
 
 	uart->server_fd = socket(AF_INET, SOCK_STREAM, 0);
-
+	
 	int opt = 1;
 	setsockopt(uart->server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
@@ -38,8 +39,13 @@ void uart_accept(uart_t *uart){
 }
 
 void uart_write(uart_t *uart, uint8_t byte){
-	if(uart->client_fd < 0)
+	if(uart->client_fd < 0){
+		fprintf(stderr, "[UART] client not set correctly");
 		return;
+	}
+	char s[64];
+	sprintf(s, "[UART] Writing to UART: %c\n", byte);
+	print_debug(s);
 	send(uart->client_fd, &byte, 1, 0);
 }
 

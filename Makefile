@@ -13,6 +13,8 @@ ROWS ?= -1
 to_debug ?= no
 relative_jump ?= no
 delayslot ?= 3
+using_uart1 ?= no
+
 
 CFLAGS += -DDELAYSLOT$(delayslot)
 ifeq ($(to_debug),yes)
@@ -20,6 +22,9 @@ ifeq ($(to_debug),yes)
 endif
 ifeq ($(relative_jump),yes)
     CFLAGS += -DRELATIVE_JUMP
+endif
+ifeq ($(using_uart1),yes)
+    CFLAGS += -DUSING_UART1
 endif
 
 #####################
@@ -65,17 +70,18 @@ UART = $(CPUMODEL)/$(PERIPHERAL)/uart
 #
 # Peripherals
 #
+UART_OBJS = $(BUILD)/$(UART)/uart.o															# UART objs
 BUS_OBJS = $(BUILD)/$(BUS)/bus.o															# Bus objs
 MEM_OBJS = $(BUILD)/$(MEMORY)/memory.o														# Memory objs
 
-PER_OBJS = $(MEM_OBJS) $(BUS_OBJS)															# All of the peripherals
+PER_OBJS = $(MEM_OBJS) $(BUS_OBJS) $(UART_OBJS)												# All of the peripherals
 CPU_OBJS = $(BUILD)/$(CPUMODEL)/cpu_model.o $(BUILD)/$(CPUMODEL)/cpu_utils.o $(PER_OBJS)	# Everything needed to compile CPU
 APP_OBJS = $(CPU_OBJS) $(BUILD)/$(EXTRA)/utils.o											# Minimal objectes for any app 
 
 #####################
 # Execution options
 #####################
-all: build_init $(BUILD)/a.out $(BUILD)/$(COMPILER)/compiler.out $(BUILD)/$(TEST)/test.out compile
+all: clean build_init $(BUILD)/a.out $(BUILD)/$(COMPILER)/compiler.out $(BUILD)/$(TEST)/test.out compile
 
 run: all
 	./$(BUILD)/a.out $(TESTPROGRAM)/$(FILENAME).mem $(ROWS)
