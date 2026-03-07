@@ -310,12 +310,15 @@ char *identify_instruction(uint32_t instr){
 	} else if(opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR) { 
 		// JTYPE
 		imm = instr & 0x03FFFFFF;
+		rs1  = (instr >> (32-11)) & 0x1F;
 		
 		// Sign extension 
 		if(imm >> 25)
 			imm |= 0xFC000000;
-
-		snprintf(instr_str+len, 64-len, " 0x%08x", imm);
+		if(opcode == OPCODE_JR || opcode == OPCODE_JALR)
+			snprintf(instr_str+len, 64-len, " R%-2d", rs1);
+		else
+			snprintf(instr_str+len, 64-len, " 0x%08x", imm);
 
 	} else if(opcode != OPCODE_NOP) {
 		// ITYPE

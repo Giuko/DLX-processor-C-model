@@ -47,8 +47,9 @@ controlWord_t control_unit(uint32_t instr, cpu_t *cpu){
 
 	} else if (opcode == OPCODE_J || opcode == OPCODE_JAL || opcode == OPCODE_JR || opcode == OPCODE_JALR) {	
 		// J-Type
-		if(opcode == OPCODE_JR || opcode == OPCODE_JALR)
+		if(opcode == OPCODE_JR || opcode == OPCODE_JALR) {
 			cw.useRegisterToJump = true;
+		}
 
 		cw.useImm = true;
 		cw.ALU_opcode = FUNC_ADDU;
@@ -285,9 +286,10 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		if(opcode == OPCODE_JR || opcode == OPCODE_JALR) {
 			rs1 = (instr >> (32-11)) & 0x1F;
 			rs1_val = cpu_get_reg(cpu, rs1);
+			sprintf(s, "[DECODE]: JRTYPE | R%-2d [%#08x]\n", rs1, rs1_val);
+		}else{
+			sprintf(s, "[DECODE]: JTYPE | imm: %#08x\n", imm);
 		}
-			
-		sprintf(s, "[DECODE]: JTYPE | imm: %#08x\n", imm);
 		print_debug(s);
 		
 		// Get controls signal to use to the next steps
@@ -555,8 +557,8 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->ALU_out = ALU_out;
 	pipeEx->jump = toJump;
 #ifdef DELAYSLOT1
-	if(pipeEx->controlWord.useRegisterToJump)
-		cpu->pc = pipeEx->rs1_val/4;
+	if(pipeDecode->controlWord.useRegisterToJump)
+		cpu->pc = pipeDecode->rs1_val/4;
 	else if(pipeEx->jump)
 		cpu->pc = pipeEx->ALU_out/4;
 	else

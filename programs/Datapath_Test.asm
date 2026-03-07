@@ -1,3 +1,5 @@
+.define UART1   0x200
+
 addi r1, r0, 0x15
 addi r30, r0, #1
 subi r2, r0, #15
@@ -21,7 +23,7 @@ sne r8, r8, r9
 sle r9, r9, r10
 sge r10, r10, r11
 lw r21, r0, #6
-slli r30, r30, #28			; R30 = UART_TX 
+addi r30, r0, #UART1
 addi r1, r0, #72			; H
 addi r2, r0, #101			; e
 addi r3, r0, #108			; l

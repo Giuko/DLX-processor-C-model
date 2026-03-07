@@ -20,6 +20,8 @@ int bus_write(bus_t *bus, uint32_t addr, uint32_t val){
 	/////////////////////////////////
 	// UART1
 	/////////////////////////////////
+	if(addr == UART1_TX)
+		print_debug("[BUS] Writing to UART1\n");
 #ifdef USING_UART1
 	if(addr == UART1_TX){
 		print_debug("[BUS] Writing to UART1\n");
