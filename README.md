@@ -43,9 +43,10 @@ make <target> [options] to_debug=yes
 | `FILENAME=<filename>`     | Assembly file located in the `test_program` folder    | `Datapath_Test.asm` |
 | `ROWS=<rows>`             | Number of instructions (rows) to execute. Use `-1` to run the entire program | `-1` |
 | `to_debug=<yes/no>`       | Enable extra debug output                             | `no` |
-| `delayslot=<1\|2\|3>`     | Select CPU delay slot model to simulate               | `3` |
-| `relative_jump=<yes/no>`  | Controls jump address calculation:<br>• `yes` → compute as `addr + imm`<br>• `no` → compute as `imm` | `no` |
+| `delayslot=<1\|2\|3>`     | Select CPU delay slot model to simulate               | `1` |
+| `relative_jump=<yes/no>`  | Controls jump address calculation:<br>• `yes` → compute as `addr + imm`<br>• `no` → compute as `imm` | `yes` |
 | `using_uart1=<yes/no>`    | Enable the usage of a UART output to another terminal, use `nc localhost 5555`  | `no` |
+| `forwarding=<yes/no>`     | Enable the forwaring to the decode stage  | `yes` |
 
 ---
 

@@ -6,11 +6,17 @@
 #include <string.h>
 
 // Control Unit Emulation
-controlWord_t control_unit(uint32_t instr){
+controlWord_t control_unit(uint32_t instr, cpu_t *cpu){
 	controlWord_t cw;
 	uint32_t opcode;
 	uint16_t func;
 	char s[128];
+
+
+#ifdef FORWARDING
+	forward_mem_out(cpu);
+	forward_alu_out(cpu);
+#endif
 
 	cw.ALU_opcode   		= FUNC_NOP;
 	cw.jmp_eqz_neqz 		= nop;
@@ -196,7 +202,6 @@ pipeFetch_t *instruction_fetch(void *handle) {
 	strcpy(pipeFetch->instr_str, temp);
 	free(temp);
 	pipeFetch->nextPC = (cpu->pc+1)*4;
-	pipeFetch->controlWord = control_unit(pipeFetch->instr);
 
 	printf("[FETCH] %s\n", pipeFetch->instr_str);
 	return pipeFetch;	
@@ -282,7 +287,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 			rs1_val = cpu_get_reg(cpu, rs1);
 		}
 			
-		sprintf(s, "[DECODE]: JTYPE | imm: %#010x\n", imm);
+		sprintf(s, "[DECODE]: JTYPE | imm: %#08x\n", imm);
 		print_debug(s);
 		
 		// Get controls signal to use to the next steps
@@ -316,22 +321,26 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		
 		// Acces RF to read the registers
 		rs1_val = cpu_get_reg(cpu, rs1);
-		
-		sprintf(s, "[DECODE]: ITYPE | rs1: R%-2d [%d] | r: R%-2d | imm: %#010x\n", rs1, rs1_val, rd, imm);
+	
+		if(opcode == OPCODE_SW){
+			rs2 = rd;
+			rs2_val = cpu_get_reg(cpu, rd);		// In case of a store, mem[rs1_val + offset] = rs2_val (R[rd]) 
+			sprintf(s, "[DECODE]: ITYPE | rs: R%-2d [0x%x] | r_off: R%-2d [0x%x] | imm: %#08x\n", rs2, rs2_val, rs1, rs1_val, imm);
+		}else{
+			sprintf(s, "[DECODE]: ITYPE | rs1: R%-2d [0x%x] | rd: R%-2d | imm: %#08x\n", rs1, rs1_val, rd, imm);
+		}
 		print_debug(s);
 
-		if(opcode == OPCODE_SW)
-				rs2_val = cpu_get_reg(cpu, rd);		// In case of a store, mem[rs1_val + offset] = rs2_val (R[rd]) 
-			
 	}
-
-
 
 	pipeDecode->nextPC 	= nextPC;
 	pipeDecode->rd 		= rd;
 	pipeDecode->rs1_val = rs1_val;
 	pipeDecode->rs2_val = rs2_val;
 	pipeDecode->imm 	= imm;
+	pipeDecode->rs1 	= rs1;
+	pipeDecode->rs2 	= rs2;
+
 
 	pipeDecode->controlWord = pipeFetch->controlWord;
 	strcpy(pipeDecode->instr_str, pipeFetch->instr_str);
@@ -690,8 +699,6 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 		}else if(pipeMem->controlWord.readMem) {
 			// LOAD instruction
 			val_to_store = pipeMem->DRAM_out;
-			sprintf(s, "[WB] Saving to R31 due to link\n");
-			print_debug(s);
 			sprintf(s, "[WB] Storing DRAM_out\n");
 			print_debug(s);
 		}else {
@@ -736,13 +743,14 @@ void cpu_step(void* handle) {
 	if(cpu->iteration > 2)
 		cpu->pipeMem = instruction_mem(handle, cpu->pipeEx);
 
-	if(cpu->iteration > 1)
+	if(cpu->iteration > 1) 
 		cpu->pipeEx = instruction_exe(handle, cpu->pipeDecode);
-	
+
 	if(cpu->iteration > 0)
 		cpu->pipeDecode = instruction_decode(handle, cpu->pipeFetch);
-	
+
 	cpu->pipeFetch = instruction_fetch(handle);
+	cpu->pipeFetch->controlWord = control_unit(cpu->pipeFetch->instr, cpu);
 
 
 	if(cpu->iteration < 5)

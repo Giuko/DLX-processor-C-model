@@ -11,9 +11,10 @@ TESTFILE1 ?= "testprogram.asm"
 ROWS ?= -1
 
 to_debug ?= no
-relative_jump ?= no
-delayslot ?= 3
+relative_jump ?= yes
+delayslot ?= 1
 using_uart1 ?= no
+forwarding ?= yes
 
 
 CFLAGS += -DDELAYSLOT$(delayslot)
@@ -25,6 +26,9 @@ ifeq ($(relative_jump),yes)
 endif
 ifeq ($(using_uart1),yes)
     CFLAGS += -DUSING_UART1
+endif
+ifeq ($(forwarding),yes)
+    CFLAGS += -DFORWARDING
 endif
 
 #####################

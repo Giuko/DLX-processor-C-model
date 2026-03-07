@@ -82,6 +82,53 @@ void cpu_free(void *handle){
 	free(cpu);
 }
 
+void forward_alu_out(cpu_t *cpu){
+	if(cpu == NULL)	return;
+	if(cpu->iteration <= 1) return;
+	if(cpu->pipeDecode == NULL)	return;
+	if(cpu->pipeEx == NULL)	return;
+	if(cpu->pipeEx->controlWord.writeRF == false) return;	// No writing in the register file
+	if(cpu->pipeEx->controlWord.readMem == true) return;	// Not concerning the exe unit
+	if(cpu->pipeEx->rd == 0) return;						// Writing on R0 doens't make sense
+	if(cpu->pipeDecode->rs1 == cpu->pipeEx->rd){
+		print_debug("[CONTROL] Forwarding ALU out to RS1\n");
+		cpu->pipeDecode->rs1_val = cpu->pipeEx->ALU_out;
+	}
+	if(cpu->pipeDecode->rs2 == cpu->pipeEx->rd){
+		print_debug("[CONTROL] Forwarding ALU out to RS2\n");
+		cpu->pipeDecode->rs2_val = cpu->pipeEx->ALU_out;
+	}
+}
+
+void forward_mem_out(cpu_t *cpu){
+	if(cpu == NULL)	return;
+	if(cpu->iteration <= 2) return;
+	if(cpu->pipeDecode == NULL)	return;
+	if(cpu->pipeMem == NULL)	return;
+	if(cpu->pipeMem->controlWord.writeRF == false) return;	// No writing in the register file
+	if(cpu->pipeMem->rd == 0) return;						// Writing on R0 doens't make sense
+
+	if(cpu->pipeMem->controlWord.readMem == false){
+		if(cpu->pipeDecode->rs1 == cpu->pipeMem->rd) {
+			print_debug("[CONTROL] Forwarding MEM out to RS1\n");
+			cpu->pipeDecode->rs1_val = cpu->pipeMem->ALU_out;
+		}
+		if(cpu->pipeDecode->rs2 == cpu->pipeMem->rd) {
+			print_debug("[CONTROL] Forwarding MEM out to RS2\n");
+			cpu->pipeDecode->rs2_val = cpu->pipeMem->ALU_out;
+		}
+		return;
+	}
+
+	if(cpu->pipeDecode->rs1 == cpu->pipeMem->rd) {
+		print_debug("[CONTROL] Forwarding MEM out to RS1\n");
+		cpu->pipeDecode->rs1_val = cpu->pipeMem->DRAM_out;
+	}
+	if(cpu->pipeDecode->rs2 == cpu->pipeMem->rd) {
+		print_debug("[CONTROL] Forwarding MEM out to RS2\n");
+		cpu->pipeDecode->rs2_val = cpu->pipeMem->DRAM_out;
+	}
+}
 ////////////////////////////////////
 // GETTER
 ////////////////////////////////////

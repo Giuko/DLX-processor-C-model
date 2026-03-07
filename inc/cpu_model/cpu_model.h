@@ -88,6 +88,7 @@ typedef enum {
 
 typedef struct{
 	uint16_t 	ALU_opcode;
+	uint8_t 	rd;
 	jump_t 		jmp_eqz_neqz;
 	bool 		writeRF;
 	bool 		useImm;
@@ -112,7 +113,7 @@ typedef struct {
 	// New signals to feed the next steps
 	uint32_t rs1_val;
 	uint32_t rs2_val;
-	uint8_t  rd;
+	uint8_t  rs1, rs2, rd;
 	uint32_t imm;
 
 	// Controls
@@ -218,6 +219,11 @@ void cpu_reset(void *handle);
 // Load instruction into memory
 void cpu_load_instr(void *handle, uint32_t addr, uint32_t instr);
 
+// Forward ALU result to the ID stage
+void forward_alu_out(cpu_t *cpu);
+
+// Forward MEM out to the ID stage
+void forward_mem_out(cpu_t *cpu);
 ////////////////////////////////////
 // GETTER
 ////////////////////////////////////
