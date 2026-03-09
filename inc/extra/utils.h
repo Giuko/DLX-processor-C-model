@@ -1,5 +1,6 @@
 #ifndef UTILS_H
 #define UTILS_H
+#include <stdio.h>
 
 // ANSI escape helpers
 #define CLEAR_SCREEN()       printf("\033[2J\033[H")				// Clear terminal
@@ -24,6 +25,7 @@
 #define OK 0
 #define RESTART 1
 #define QUIT 2
+#define CONTINUE 3
 
 void capture_cpu_step(void *handle);
 void draw_program_panel(void *handle); 
@@ -31,4 +33,5 @@ void draw_left_panel(int step);
 void print_state(void *handle);
 void draw_registers(void *handle);
 int press_and_continue(void *handle, int step);
+int cpu_load_program(void *handle, FILE *fd);
 #endif

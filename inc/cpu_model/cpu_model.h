@@ -31,36 +31,46 @@
 #define FUNC_SLEU 	0x3c
 #define FUNC_SGEU 	0x3d
 
-#define OPCODE_RTYPE    0x00
-#define OPCODE_J        0x02
-#define OPCODE_JAL      0x03
-#define OPCODE_BEQZ     0x04
-#define OPCODE_BNEZ     0x05
-#define OPCODE_ADDI     0x08
-#define OPCODE_ADDUI    0x09
-#define OPCODE_SUBI     0x0A
-#define OPCODE_SUBUI    0x0B
-#define OPCODE_ANDI     0x0C
-#define OPCODE_ORI      0x0D
-#define OPCODE_XORI     0x0E
-#define OPCODE_JR       0x12
-#define OPCODE_JALR     0x13
-#define OPCODE_SLLI     0x14
-#define OPCODE_NOP      0x15
-#define OPCODE_SRLI     0x16
-#define OPCODE_SRAI     0x17
-#define OPCODE_SEQI     0x18
-#define OPCODE_SNEI     0x19
-#define OPCODE_SLTI     0x1A
-#define OPCODE_SGTI     0x1B
-#define OPCODE_SLEI     0x1C
-#define OPCODE_SGEI     0x1D
-#define OPCODE_LW       0x23
-#define OPCODE_SW       0x2B
-#define OPCODE_SLTUI    0x3A
-#define OPCODE_SGTUI    0x3B
-#define OPCODE_SLEUI    0x3C
-#define OPCODE_SGEUI    0x3D
+#define OPCODE_RTYPE	0x00
+#define OPCODE_J		0x02
+#define OPCODE_JAL		0x03
+#define OPCODE_BEQZ		0x04
+#define OPCODE_BNEZ		0x05
+#define OPCODE_ADDI		0x08
+#define OPCODE_ADDUI	0x09
+#define OPCODE_SUBI		0x0A
+#define OPCODE_SUBUI	0x0B
+#define OPCODE_ANDI		0x0C
+#define OPCODE_ORI		0x0D
+#define OPCODE_XORI		0x0E
+#define OPCODE_JR		0x12
+#define OPCODE_JALR		0x13
+#define OPCODE_SLLI		0x14
+#define OPCODE_NOP		0x15
+#define OPCODE_SRLI		0x16
+#define OPCODE_SRAI		0x17
+#define OPCODE_SEQI		0x18
+#define OPCODE_SNEI		0x19
+#define OPCODE_SLTI		0x1A
+#define OPCODE_SGTI		0x1B
+#define OPCODE_SLEI		0x1C
+#define OPCODE_SGEI		0x1D
+#define OPCODE_LB		0x20
+#define OPCODE_LH		0x21
+#define OPCODE_LW		0x23
+#define OPCODE_LBU		0x24
+#define OPCODE_LHU		0x25
+#define OPCODE_LF		0x26
+#define OPCODE_LD		0x27
+#define OPCODE_SB		0x28
+#define OPCODE_SH		0x29
+#define OPCODE_SW		0x2B
+#define OPCODE_SF		0x2E
+#define OPCODE_SD		0x2F
+#define OPCODE_SLTUI	0x3A
+#define OPCODE_SGTUI	0x3B
+#define OPCODE_SLEUI	0x3C
+#define OPCODE_SGEUI	0x3D
 
 #ifdef DELAYSLOT3
 #define DELAYSLOT 3
@@ -75,8 +85,6 @@
 #endif
 
 #define REGS_NUM 32
-#define DRAM_DEPTH 1024
-#define IRAM_DEPTH 1024
 
 typedef enum {
 	nop,
@@ -89,6 +97,7 @@ typedef enum {
 typedef struct{
 	uint16_t 	ALU_opcode;
 	uint8_t 	rd;
+	uint8_t 	opcode;
 	jump_t 		jmp_eqz_neqz;
 	bool 		writeRF;
 	bool 		useImm;
@@ -218,6 +227,9 @@ void cpu_reset(void *handle);
 
 // Load instruction into memory
 void cpu_load_instr(void *handle, uint32_t addr, uint32_t instr);
+
+// Load data into read only memory
+void cpu_load_rodata(void *handle, uint32_t addr, uint32_t data);
 
 // Forward ALU result to the ID stage
 void forward_alu_out(cpu_t *cpu);

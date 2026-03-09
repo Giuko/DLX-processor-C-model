@@ -1,0 +1,32 @@
+.text
+addi r1, zero, #5
+sw r1, sp, #0
+subi sp, sp, #1
+addi r1, r1, #5
+sw r1, sp, #0
+subi sp, sp, #1
+addi r1, r1, #5
+sw r1, sp, #0
+subi sp, sp, #1
+addi r1, r1, #5
+sw r1, sp, #0
+subi sp, sp, #1
+nop
+nop
+nop
+xor r1, r1, r1
+nop
+nop
+nop
+addi sp, sp, #1
+lw r1, sp, #0
+addi sp, sp, #1
+lw r1, sp, #0
+addi sp, sp, #1
+lw r1, sp, #0
+addi sp, sp, #1
+lw r1, sp, #0
+nop
+nop
+nop
+nop

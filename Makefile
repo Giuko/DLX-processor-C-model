@@ -1,4 +1,4 @@
-.PHONY: all run datapath beqz clean compile test build_init uart
+.PHONY: all run datapath beqz clean compile test build_init
 
 #####################
 # Compile options
@@ -15,7 +15,7 @@ relative_jump ?= yes
 delayslot ?= 1
 using_uart1 ?= no
 forwarding ?= yes
-
+avoid_print ?= yes
 
 CFLAGS += -DDELAYSLOT$(delayslot)
 ifeq ($(to_debug),yes)
@@ -29,6 +29,9 @@ ifeq ($(using_uart1),yes)
 endif
 ifeq ($(forwarding),yes)
     CFLAGS += -DFORWARDING
+endif
+ifeq ($(avoid_print),yes)
+    CFLAGS += -DAVOID_PRINT
 endif
 
 #####################
@@ -188,9 +191,4 @@ $(BUILD)/$(UART)/uart.o: $(SRC)/$(UART)/uart.c $(INC)/$(UART)/uart.h
 
 $(BUILD)/$(UART)/main.o: $(SRC)/$(UART)/main.c $(INC)/$(UART)/uart.h
 	$(CC) $(CFLAGS) -c $(SRC)/$(UART)/main.c -o $(BUILD)/$(UART)/main.o
-
-uart: $(BUILD)/$(UART)/uart.o $(BUILD)/$(UART)/main.o
-	$(CC) $(BUILD)/$(UART)/uart.o $(BUILD)/$(UART)/main.o -o $(BUILD)/$(UART)/main.out
-	./$(BUILD)/$(UART)/main.out
-
 

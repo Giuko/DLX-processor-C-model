@@ -4,9 +4,24 @@
 #include <cpu_model/peripherals/memory/memory.h>
 #include <cpu_model/peripherals/uart/uart.h>
 
-#define IRAM_BASE	0x00000000
-#define DRAM_BASE	0x10000000
-#define	UART1_BASE	0x10000200
+// Heap ram, generic
+#define DRAM_BASE	0x00000000
+#define DRAM_SIZE	0x00001000
+#define STACK_BASE 	(DRAM_BASE+DRAM_SIZE-1)
+
+// Read only data 
+#define RODATA_BASE	0x00001000
+#define RODATA_SIZE	0x00001000
+
+// Instruction Memory
+#define IRAM_BASE	0x20000000
+#define IRAM_SIZE	0x00001000
+
+//////////////////////////////////
+// Memory mapped peripherals
+//////////////////////////////////
+// UART1 address
+#define	UART1_BASE	0x00100000
 
 #define UART1_TX		(UART1_BASE + UART_TX_OFFSET)
 #define UART1_RX		(UART1_BASE + UART_RX_OFFSET)
@@ -15,6 +30,7 @@
 typedef struct {
 	memory_t	iram;
 	memory_t	dram;
+	memory_t	rodata;
 	uart_t		*uart1;
 } bus_t;
 

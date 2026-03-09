@@ -62,7 +62,7 @@ if(cpu == NULL){
 // Load instruction into memory
 void cpu_load_instr(void* handle, uint32_t addr, uint32_t instr) {
     cpu_t* cpu = (cpu_t*)handle;
-	if(addr >= IRAM_DEPTH){
+	if(addr >= IRAM_SIZE){
 		fprintf(stderr, "[IRAM] Address not correct: %d\n", addr);
 		return;
 	}
@@ -70,6 +70,18 @@ void cpu_load_instr(void* handle, uint32_t addr, uint32_t instr) {
 		bus_write(&cpu->bus, addr+IRAM_BASE, NOP_Instruction);
 	else
 		bus_write(&cpu->bus, addr+IRAM_BASE, instr);
+}
+
+// Load read only data into memory
+void cpu_load_rodata(void *handle, uint32_t addr, uint32_t data){
+	cpu_t* cpu = (cpu_t*)handle;
+	if(addr >= RODATA_BASE + RODATA_SIZE){
+		fprintf(stderr, "[RODATA] Address not correct: %d\n", addr);
+		return;
+	}
+	printf("Writing on RODATA: addr: 0x%08x -- data: 0x%0x8\n", addr, data);
+	mem_write(&cpu->bus.rodata, addr, data);
+	return;
 }
 
 void cpu_free(void *handle){
@@ -165,7 +177,7 @@ uint32_t cpu_get_mem_data(void *handle, uint32_t addr){
 		return 0;
 	}
 
-	bus_read(&cpu->bus, addr+DRAM_BASE, &value);
+	bus_read(&cpu->bus, addr, &value);
 	return value;
 }
 
@@ -177,7 +189,7 @@ uint32_t cpu_get_instr(void *handle, uint32_t addr){
 		fprintf(stderr, "[cpu_get_pc] CPU is NULL\n");
 		return 0;
 	}
-	if(addr >= IRAM_DEPTH) {
+	if(addr >= IRAM_SIZE) {
 		fprintf(stderr, "[WARNING] IRAM wrong address: %d\n", addr);
 		return 0;
 	}
@@ -212,9 +224,9 @@ void cpu_write_mem_data(void *handle, uint32_t addr, uint32_t data){
 	}
 	
 	char s[64];
-	sprintf(s, "[BUS] Writing to the address: 0x%08x\n", addr+DRAM_BASE);
+	sprintf(s, "[BUS] Writing to the address: 0x%08x\n", addr);
 	print_debug(s);
-	bus_write(&cpu->bus, addr+DRAM_BASE, data);
+	bus_write(&cpu->bus, addr, data);
 }
 
 ////////////////////////////////////
@@ -260,7 +272,13 @@ char *identify_instruction(uint32_t instr){
 		case OPCODE_SLEI:     strcpy(instr_str, "SLEI  "); break;
 		case OPCODE_SGEI:     strcpy(instr_str, "SGEI  "); break;
 		case OPCODE_LW:       strcpy(instr_str, "LW    "); break;
+		case OPCODE_LH:       strcpy(instr_str, "LH    "); break;
+		case OPCODE_LB:       strcpy(instr_str, "LB    "); break;
+		case OPCODE_LHU:      strcpy(instr_str, "LHU   "); break;
+		case OPCODE_LBU:      strcpy(instr_str, "LBU   "); break;
 		case OPCODE_SW:       strcpy(instr_str, "SW    "); break;
+		case OPCODE_SH:       strcpy(instr_str, "SH    "); break;
+		case OPCODE_SB:       strcpy(instr_str, "SB    "); break;
 		case OPCODE_SLTUI:    strcpy(instr_str, "SLTUI "); break;
 		case OPCODE_SGTUI:    strcpy(instr_str, "SGTUI "); break;
 		case OPCODE_SLEUI:    strcpy(instr_str, "SLEUI "); break;

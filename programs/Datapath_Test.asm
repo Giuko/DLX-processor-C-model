@@ -1,5 +1,3 @@
-.define UART1   0x200
-
 addi r1, r0, 0x15
 addi r30, r0, #1
 subi r2, r0, #15
@@ -23,28 +21,22 @@ sne r8, r8, r9
 sle r9, r9, r10
 sge r10, r10, r11
 lw r21, r0, #6
-addi r30, r0, #UART1
-addi r1, r0, #72			; H
-addi r2, r0, #101			; e
-addi r3, r0, #108			; l
-addi r4, r0, #108			; l
-addi r5, r0, #111			; o
-addi r6, r0, #32			;  
-addi r7, r0, #119			; w
-addi r8, r0, #111			; o
-addi r9, r0, #114			; r
-addi r10, r0, #108			; l
-addi r11, r0, #100			; d
-addi r12, r0, #10			; \n
-sw r1, r30, 0x0
-sw r2, r30, 0x0
-sw r3, r30, 0x0
-sw r4, r30, 0x0
-sw r5, r30, 0x0
-sw r6, r30, 0x0
-sw r7, r30, 0x0
-sw r8, r30, 0x0
-sw r9, r30, 0x0
-sw r10, r30, 0x0
-sw r11, r30, 0x0
-sw r12, r30, 0x0
+addi r1, r0, #5
+addi r2, r0, #-5
+sw r1, r0, #0
+sw r2, r0, #1
+addi r3, r0, #0
+addi r4, r0, #0
+addi r5, r0, #0
+addi r6, r0, #0
+addi r7, r0, #0
+nop
+nop
+nop
+nop
+lb r3, r0, #0
+lb r4, r0, #1
+lbu r5, r0, #1
+lh r6, r0, #1
+lhu r7, r0, #1
+

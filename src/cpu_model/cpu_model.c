@@ -31,6 +31,7 @@ controlWord_t control_unit(uint32_t instr, cpu_t *cpu){
 	
 	// Get opcode
 	opcode = (instr >> (32-6)) & 0x3F;
+	cw.opcode = opcode;
 	func = instr & 0x7FF;
 	sprintf(s, "[CONTROL] OPCODE = 0x%02x\n", opcode);
 	print_debug(s);
@@ -138,10 +139,16 @@ controlWord_t control_unit(uint32_t instr, cpu_t *cpu){
 				cw.ALU_opcode = FUNC_SGEU;
 				break;
 			case OPCODE_LW:
+			case OPCODE_LH:
+			case OPCODE_LB:
+			case OPCODE_LHU:
+			case OPCODE_LBU:
 				cw.ALU_opcode = FUNC_ADDU;
 				cw.readMem = true;
 				break;
 			case OPCODE_SW:
+			case OPCODE_SH:
+			case OPCODE_SB:
 				// The only I-Type instruction that doesn't 
 				// need to save into the registers
 				cw.ALU_opcode = FUNC_ADDU;
@@ -204,7 +211,9 @@ pipeFetch_t *instruction_fetch(void *handle) {
 	free(temp);
 	pipeFetch->nextPC = (cpu->pc+1)*4;
 
+#ifndef AVOID_PRINT
 	printf("[FETCH] %s\n", pipeFetch->instr_str);
+#endif
 	return pipeFetch;	
 }
 
@@ -250,7 +259,9 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 	// Decode instruction
 	if (opcode == OPCODE_NOP) {
 		// Do nothing
+#ifndef AVOID_PRINT
 		printf("[DECODE] NOP\n");
+#endif
 		return pipeDecode;
 	} else if (opcode == 0x00) {	
 		// R-Type
@@ -324,7 +335,7 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 		// Acces RF to read the registers
 		rs1_val = cpu_get_reg(cpu, rs1);
 	
-		if(opcode == OPCODE_SW){
+		if(opcode == OPCODE_SW  || opcode == OPCODE_SH || opcode == OPCODE_SB){
 			rs2 = rd;
 			rs2_val = cpu_get_reg(cpu, rd);		// In case of a store, mem[rs1_val + offset] = rs2_val (R[rd]) 
 			sprintf(s, "[DECODE]: ITYPE | rs: R%-2d [0x%x] | r_off: R%-2d [0x%x] | imm: %#08x\n", rs2, rs2_val, rs1, rs1_val, imm);
@@ -346,7 +357,9 @@ pipeDecode_t* instruction_decode(void *handle, pipeFetch_t *pipeFetch) {
 
 	pipeDecode->controlWord = pipeFetch->controlWord;
 	strcpy(pipeDecode->instr_str, pipeFetch->instr_str);
+#ifndef AVOID_PRINT
 	printf("[DECODE] %s\n", pipeDecode->instr_str);
+#endif
 	// Previous pipe is now useless
 	free(pipeFetch);
 	
@@ -575,11 +588,12 @@ pipeEx_t* instruction_exe(void *handle, pipeDecode_t *pipeDecode) {
 	pipeEx->controlWord = pipeDecode->controlWord;
 	
 	strcpy(pipeEx->instr_str, pipeDecode->instr_str);
+#ifndef AVOID_PRINT
 	if(strlen(pipeEx->instr_str) == 0)
 		printf("[EXE] NOP\n");
 	else
 		printf("[EXE] %s\n", pipeEx->instr_str);
-
+#endif
 	// Previous pipe is now useless
 	free(pipeDecode);
 	
@@ -616,9 +630,40 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	
 	if(pipeEx->controlWord.readMem) {
 		DRAM_out = cpu_get_mem_data(cpu, DRAM_addr);
+		switch (pipeEx->controlWord.opcode) {
+			case OPCODE_LH:
+				DRAM_out = DRAM_out & 0xffff;
+				if(DRAM_out >> 15)
+					DRAM_out |= 0xffff0000;		// Sign extension
+				break;
+			case OPCODE_LHU:
+				DRAM_out = DRAM_out & 0xffff;
+				break;
+			case OPCODE_LB:
+				DRAM_out = DRAM_out & 0xff;
+				if(DRAM_out >> 7)
+					DRAM_out |= 0xffffff00;		// Sign extension
+				break;
+			case OPCODE_LBU:
+				DRAM_out = DRAM_out & 0xff;
+				break;
+			default:
+				break;
+		}
+
 		sprintf(s, "[MEM] Reading from memory\n");
 		print_debug(s);
 	}else if(pipeEx->controlWord.writeMem) {
+		switch (pipeEx->controlWord.ALU_opcode) {
+			case OPCODE_SH:
+				DRAM_data = DRAM_data & 0xffff;
+				break;
+			case OPCODE_SB:
+				DRAM_data = DRAM_data & 0xff;
+				break;
+			default:
+				break;
+		}
 		cpu_write_mem_data(cpu, DRAM_addr, DRAM_data);
 		sprintf(s, "[MEM] Writing to memory: 0x%08x\n", DRAM_addr);
 		print_debug(s);
@@ -649,11 +694,12 @@ pipeMem_t* instruction_mem(void *handle, pipeEx_t *pipeEx){
 	pipeMem->jump			= pipeEx->jump;
 
 	strcpy(pipeMem->instr_str, pipeEx->instr_str);
+#ifndef AVOID_PRINT
 	if(strlen(pipeMem->instr_str) == 0)
 		printf("[MEM] NOP\n");
 	else
 		printf("[MEM] %s\n", pipeMem->instr_str);
-	
+#endif	
 	// Previous pipe is now useless
 	free(pipeEx);
 
@@ -714,10 +760,12 @@ void instruction_WB(void *handle, pipeMem_t *pipeMem){
 		print_debug(s);
 	}
 
+#ifndef AVOID_PRINT
 	if(strlen(pipeMem->instr_str) == 0)
 		printf("[WB] NOP\n");
 	else
 		printf("[WB] %s\n", pipeMem->instr_str);
+#endif
 	// Previous pipe is now useless
 	free(pipeMem);
 }

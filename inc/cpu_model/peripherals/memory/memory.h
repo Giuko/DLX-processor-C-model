@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 typedef struct {
-	uint32_t *data;
+	uint8_t *data;
 	uint32_t size;			// In words
 	uint32_t base_addr;		// To be used for memory map
 } memory_t;
@@ -14,7 +14,7 @@ typedef struct {
 	memory_t dram;
 } mem_system_t;
 
-// Initilize memory
+// Initialize memory
 // Returns 0 when OK
 int mem_init(memory_t *mem, uint32_t size, uint32_t base_addr);
 
