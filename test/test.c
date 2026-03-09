@@ -4,57 +4,50 @@
 #include <cpu_model/cpu_model.h>
 #include <extra/utils.h>
 
-// A known program is executed, so the comparison is done, 
+// A known program is executed, so the comparison is done,
 // knowing the expected results
 
-int basic_test(void *handle){
-	cpu_t *cpu = handle;
-	FILE *fd;
-	uint32_t temp;
-	uint32_t *program;
-	uint32_t program_size = 0;
-	uint32_t val;
-	int i;
+int basic_test(void *handle) {
+    cpu_t *cpu = handle;
+    FILE  *fd;
+    uint32_t val;
+    int i;
+
     if (cpu == NULL) {
         fprintf(stderr, "[TEST] CPU is NULL\n");
         exit(1);
     }
 
+    fd = fopen("./programs/testprogram.asm.mem", "r");
+    if (fd == NULL) {
+        fprintf(stderr, "[TEST] fopen() failed to open: ./programs/testprogram.asm.mem\n");
+        exit(1);
+    }
 
-	fd = fopen("./programs/testprogram.asm.mem", "r");
-	if(fd == NULL){
-		fprintf(stderr, "[TEST] fopen() failed to open: ../programs/testprogram2.asm\n");
-		exit(1);
-	}
-
-    while (fscanf(fd, "%x", &temp) == 1){
-        program_size++;
-	}
-	printf("Program size: %d\n", program_size);
-    rewind(fd);
-
-    program = (uint32_t *)malloc(sizeof(uint32_t) * program_size);
-    i = 0;
-    while (i < (int)program_size && fscanf(fd, "%x", &program[i]) == 1)
-        i++;
-    fclose(fd);
-	
-	// Load program into the IRAM
     cpu_reset(cpu);
-	for (i = 0; i < (int)program_size; i++){
-        cpu_load_instr(cpu, i, program[i]);
-	}
-	// Executing each instruction
-	i = 0;
-	printf("#### STEP %-3d ####\n", ++i);
-	cpu_step(cpu);
-	printf("\n\n\n\n");
-	while(cpu_get_pc(cpu) < (program_size+4)){
-		printf("#### STEP %-3d ####\n", ++i);
-		cpu_step(cpu);
-		printf("\n\n\n\n");
-	}
-	CLEAR_SCREEN();	
+    int program_size = cpu_load_program(cpu, fd);
+    fclose(fd);
+
+    if (program_size <= 0) {
+        fprintf(stderr, "[TEST] cpu_load_program() failed or empty program\n");
+        exit(1);
+    }
+    printf("Program size: %d instructions\n", program_size);
+
+    // Execute all instructions
+    i = 0;
+    printf("#### STEP %-3d ####\n", ++i);
+    cpu_step(cpu);
+    printf("\n\n\n\n");
+
+    while (cpu_get_pc(cpu) < (uint32_t)(program_size + 4)) {
+        printf("#### STEP %-3d ####\n", ++i);
+        cpu_step(cpu);
+        printf("\n\n\n\n");
+    }
+
+    CLEAR_SCREEN();
+
     /* r0 — hardwired zero */
     val =          0; ASSERT(cpu_get_reg(cpu,  0) == val, "R0  = 0 (hardwired)");
 
@@ -104,12 +97,12 @@ int basic_test(void *handle){
 
     /* Section 8 — Loop counter */
     val =          2; ASSERT(cpu_get_reg(cpu, 31) == val, "R31 = 2 (loop count)");
-	free(program);
-	return 0;
+
+    return 0;
 }
 
-int main(){
-	cpu_t *cpu			= NULL;
+int main() {
+    cpu_t *cpu = NULL;
 
     cpu = (cpu_t *)cpu_create();
     if (cpu == NULL) {
@@ -118,12 +111,10 @@ int main(){
     }
     cpu_reset(cpu);
 
-	// Tests
-	basic_test(cpu);
+    basic_test(cpu);
 
-	printf("All test passed\n");
+    printf("All tests passed\n");
 
-
-	free(cpu);
-	return 0;
+    free(cpu);
+    return 0;
 }

@@ -15,7 +15,7 @@ relative_jump ?= yes
 delayslot ?= 1
 using_uart1 ?= no
 forwarding ?= yes
-avoid_print ?= yes
+avoid_print ?= no
 
 CFLAGS += -DDELAYSLOT$(delayslot)
 ifeq ($(to_debug),yes)
